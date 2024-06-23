@@ -1,0 +1,75 @@
+#anger 0 cost Deal 8 damage. Add a copy of this card to your discard pile.
+#armaments 1 cost Gain 5 Block. Upgrade all cards in your hand for the rest of combat.
+#barricade 2 cost Block no longer expires at the start of your turn.
+#bash 2 cost Deal 10 damage. Apply 3 Vulnerable.
+#battle trance 0 cost Draw 4 cards. You cannot draw additional cards this turn.
+#berserk 0 cost Gain 1 Vulnerable. Gain 1 Energy at the start of your turn.
+#blood for blood 3 cost Cost 1 less energy for each time you lose HP in combat. Deal 22 damage.
+#bloodletting 0 cost Lose 3 HP. Gain 2 Energy.
+#bludgeon 3 cost Deal 42 damage.
+#body slam 0 cost Deal damage equal to your current Block.
+#brutality 0 cost (Innate.) At the start of your turn, lose 1 HP and draw 1 card.
+#burning pact 1 cost Exhaust 1 card. Draw 3 cards.
+#carnage 2 cost Ethereal. Deal 28 damage.
+#clash 0 cost Can only be played if every card in your hand is an Attack. Deal 18 damage.
+#cleave 1 cost Deal 11 damage to ALL enemies.
+#clothsline 2 cost Deal 14 damage. Apply 3 Weak.
+#combust 1 cost At the end of your turn, lose 1 HP and deal 7 damage to ALL enemies.
+#corruption 2 cost Skills cost 0. Whenever you play a Skill, Exhaust it.
+#dark embrace 1 cost Whenever a card is Exhausted, draw 1 card.
+#defend 1 cost Gain 8 Block.
+#demon form 3 cost At the start of each turn, gain 3 Strength.
+#disarm 1 cost Enemy loses 3 Strength. Exhaust.
+#double tap 1 cost This turn, your next 2 Attacks are played twice.
+#dropkick 1 cost Deal 8 damage. If the enemy is Vulnerable, gain 1 energy and draw 1 card.
+#dual wield 1 cost Create 2 copies of an Attack or Power card in your hand.
+#entrench 1 cost Double your current Block.
+#evolve 1 cost Whenever you draw a Status, draw 2 cards.
+#exhume 0 cost Place a card from your Exhaust pile into your hand. Exhaust.
+#feed 1 cost Deal 12 damage. If this kills a non-minion enemy, gain 4 permanent Max HP. Exhaust.
+#feel no pain 1 cost Whenever a card is Exhausted, gain 4 Block.
+#fiend fire Exhaust your hand. Deal 10 damage for each Exhausted card. Exhaust.
+#fire breathing 1 cost Whenever you draw a Status or Curse card, deal 10 damage to all enemies.
+#flame barrier 2 cost Gain 16 Block. Whenever you are attacked this turn, deal 6 damage to the attacker.
+#flex 0 cost Gain 4 Strength. At the end of your turn, lose 4 Strength.
+#ghostly armor 1 cost Ethereal. Gain 13 Block.
+#havoc 0 cost Play the top card of your draw pile and Exhaust it.
+#headbutt 1 cost Deal 12 damage. Place a card from your discard pile on top of your draw pile.
+#heavy blade 2 cost Deal 14 damage. Strength affects Heavy Blade 5 times.
+#hemokinesis 1 cost Lose 2 HP. Deal 18 damage.
+#immolate 2 cost Deal 28 damage to ALL enemies. Add a Burn to your discard pile.
+#impervious 2 cost Gain 40 Block. Exhaust.
+#infernal blade 0 cost Add a random Attack to your hand. It costs 0 this turn. Exhaust.
+#inflame 1 cost Gain 3 Strength.
+#intimidate 0 cost Apply 2 Weak to ALL enemies. Exhaust.
+#iron wave 1 cost Gain 7 Block. Deal 7 damage.
+#juggernaut 2 cost Whenever you gain Block, deal 7 damage to a random enemy.
+#limit break 1 cost Double your Strength. Don't Exhaust.
+#metallicize 1 cost At the end of your turn, gain 4 Block.
+#offering 0 cost Lose 6 HP. Gain 2 energy. Draw 5 cards. Exhaust.
+#perfected strike 2 cost Deal 6 damage. Deals an additional 3 damage for ALL of your cards containing "Strike".
+#pommel strike 1 cost Deal 10 damage. Draw 2 cards.
+#power through 1 cost Add 2 Wounds to your hand. Gain 20 Block.
+#pummel 1 cost Deal 2 damage 5 times. Exhaust.
+#rage 0 cost Whenever you play an Attack this turn, gain 5 Block
+#rampage Deal 8 damage. Every time this card is played, increase its damage by 8 for this combat.
+#reaper 2 cost Deal 5 damage to ALL enemies. Heal for unblocked damage dealt. Exhaust.
+#reckless charge 0 cost Deal 10 damage. Shuffle a Dazed into your draw pile
+#rupture 0 cost Whenever you lose HP from a card, gain 1 Strength.
+#searing blow 2 cost Deal 16 damage. Can be upgraded any number of times.
+#second wind 1 cost Exhaust all non-Attack cards in your hand and gain 7 Block for each.
+#seeing red 0 cost Gain 2 energy. Exhaust.
+#sentinel 1 cost Gain 8 Block. If this card is Exhausted, gain 3 energy.
+#sever soul 2 cost Exhaust all non-Attack cards in your hand. Deal 20 damage.
+#shock wave 2 cost Apply 5 Weak and Vulnerable to ALL enemies. Exhaust.
+#shrug it off 1 cost Gain 11 Block. Draw 1 card.
+#spot weakness 1 cost If an enemy intends to attack, gain 4 Strength.
+#strike 1 cost Deal 9 damage.
+#sword boomerang 1 cost Deal 3 damage to a random enemy 4 times.
+#thunderclap 1 cost Deal 7 damage and apply 1 Vulnerable to ALL enemies.
+#true grit 1 cost Gain 9 Block. Exhaust a card from your hand.
+#twin strike 1 cost Deal 7 damage twice.
+#uppercut 2 cost Deal 13 damage. Apply 2 Weak. Apply 2 Vulnerable.
+#warcry 0 cost Draw 2 cards. Place a card from your hand on top of your draw pile. Exhaust.
+#whirlwind X cost Deal 8 damage to ALL enemies X times.
+#wildstrike 1 cost Deal 1217 damage. Shuffle a Wound into your draw pile.
