@@ -56,9 +56,7 @@
     <Compile Include="curse_card.py" />
     <Compile Include="help_function.py" />
     <Compile Include="ironclad_cards.py" />
-    <Compile Include="printing.py" />
     <Compile Include="setup.py" />
-    <Compile Include="six.py" />
     <Compile Include="spirecomm\ai\agent.py" />
     <Compile Include="spirecomm\ai\priorities.py" />
     <Compile Include="spirecomm\ai\__init__.py" />
@@ -77,8 +75,6 @@
     <Compile Include="spirecomm\__init__.py" />
     <Compile Include="status_card.py" />
     <Compile Include="STS_Ai.py" />
-    <Compile Include="utilities\simple_gui.py" />
-    <Compile Include="utilities\__init__.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="anytree\" />
@@ -100,7 +96,6 @@
     <Folder Include="spirecomm\spire\__pycache__\" />
     <Folder Include="spirecomm\__pycache__\" />
     <Folder Include="temp\" />
-    <Folder Include="utilities\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="anytree\iterators\__pycache__\abstractiter.cpython-310.pyc" />
@@ -183,9 +178,6 @@
     <Content Include="temp\iron_clade_upgraded.txt" />
     <Content Include="temp\Iron_clad_regular.txt" />
     <Content Include="temp\ReadMe.txt" />
-    <Content Include="utilities\Building_deck_.png" />
-    <Content Include="utilities\draftbot.png" />
-    <Content Include="utilities\shop.png" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

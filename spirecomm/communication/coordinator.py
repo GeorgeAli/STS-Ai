@@ -6,25 +6,29 @@ import collections
 
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
-from spirecomm.communication.action import Action, StartGameAction
+from spirecomm.communication.action import StartGameAction
 
 
-def read_stdin(input_queue):
-    """Read lines from stdin and write them to a queue
+def read_stdin(input_queue, file_path):
+    """Read lines from stdin, write them to a queue, and save them to a file
 
     :param input_queue: A queue, to which lines from stdin will be written
     :type input_queue: queue.Queue
+    :param file_path: The path to the file where the input will be saved
+    :type file_path: str
     :return: None
     """
-    while True:
-        stdin_input = ""
+    with open(file_path, "a") as file:
         while True:
-            input_char = sys.stdin.read(1)
-            if input_char == "\n":
-                break
-            else:
-                stdin_input += input_char
-        input_queue.put(stdin_input)
+            stdin_input = ""
+            while True:
+                input_char = sys.stdin.read(1)
+                if input_char == "\n":
+                    break
+                else:
+                    stdin_input += input_char
+            input_queue.put(stdin_input)
+            file.write(stdin_input + "\n")
 
 
 def write_stdout(output_queue):
@@ -43,10 +47,11 @@ class Coordinator:
     """An object to coordinate communication with Slay the Spire"""
 
     def __init__(self):
+        file_path = 'output.txt'
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
         self.input_thread = threading.Thread(
-            target=read_stdin, args=(self.input_queue,)
+            target=read_stdin, args=(self.input_queue,file_path)
         )
         self.output_thread = threading.Thread(
             target=write_stdout, args=(self.output_queue,)

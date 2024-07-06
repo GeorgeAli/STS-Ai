@@ -23,13 +23,18 @@ class Intent(Enum):
     UNKNOWN = 17
 
     def is_attack(self):
-        return self in [Intent.ATTACK, Intent.ATTACK_BUFF, Intent.ATTACK_DEBUFF, Intent.ATTACK_DEFEND]
+        return self in [
+            Intent.ATTACK,
+            Intent.ATTACK_BUFF,
+            Intent.ATTACK_DEBUFF,
+            Intent.ATTACK_DEFEND,
+        ]
 
 
 class PlayerClass(Enum):
     IRONCLAD = 1
-    THE_SILENT = 2
-    DEFECT = 3
+    # THE_SILENT = 2
+    # DEFECT = 3
 
 
 class Orb:
@@ -65,20 +70,84 @@ class Player(Character):
 
     def __init__(self, max_hp, current_hp=None, block=0, energy=0):
         super().__init__(max_hp, current_hp, block)
-        self.energy = energy
-        self.orbs = []
+        self.hand = []
+        self.draw_pile = []
+        self.discard_pile = []
+        self.exhaust_pile = []
+        self.powers = []
+        self.current_hp = 0
+        self.block = 0
+        self.energy = 0
+        self.ethereal = []
 
     @classmethod
     def from_json(cls, json_object):
-        player = cls(json_object["max_hp"], json_object["current_hp"], json_object["block"], json_object["energy"])
-        player.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
+        player = cls(
+            json_object["max_hp"],
+            json_object["current_hp"],
+            json_object["block"],
+            json_object["energy"],
+        )
+        player.powers = [
+            Power.from_json(json_power) for json_power in json_object["powers"]
+        ]
         player.orbs = [Orb.from_json(orb) for orb in json_object["orbs"]]
         return player
 
+    def draw(self, number_of_cards):
+        for _ in range(number_of_cards):
+            if not self.draw_pile and self.discard_pile:
+                self.draw_pile = self.discard_pile[:]
+                self.discard_pile = []
+            if self.draw_pile:
+                self.hand.append(self.draw_pile.pop(0))
+
+    def shuffle_discard_into_draw(self):
+        self.draw_pile = self.discard_pile[:]
+        self.discard_pile.clear()
+        # Shuffle the draw pile
+        import random
+
+        random.shuffle(self.draw_pile)
+
+    def gain_energy(self, amount):
+        self.energy += amount
+
+    def add_buff(self, buff_name, amount):
+        found_buff = next(
+            (buff for buff in self.powers if buff.name == buff_name), None
+        )
+        if found_buff:
+            found_buff.amount += amount
+        else:
+            self.powers.append(Buff(buff_name, amount))
+
+
+class Buff:
+    def __init__(self, name, amount):
+        self.name = name
+        self.amount = amount
+
 
 class Monster(Character):
-
-    def __init__(self, name, monster_id, max_hp, current_hp, block, intent, half_dead, is_gone, move_id=-1, last_move_id=None, second_last_move_id=None, move_base_damage=0, move_adjusted_damage=0, move_hits=0):
+    def __init__(
+        self,
+        name,
+        monster_id,
+        max_hp,
+        current_hp,
+        block,
+        intent,
+        half_dead,
+        is_gone,
+        move_id=-1,
+        last_move_id=None,
+        second_last_move_id=None,
+        move_base_damage=0,
+        move_adjusted_damage=0,
+        move_hits=0,
+        debuffs=None,
+    ):
         super().__init__(max_hp, current_hp, block)
         self.name = name
         self.monster_id = monster_id
@@ -92,6 +161,8 @@ class Monster(Character):
         self.move_adjusted_damage = move_adjusted_damage
         self.move_hits = move_hits
         self.monster_index = 0
+        self.current_hp = current_hp  # Ensure current_hp is correctly initialized
+        self.debuffs = debuffs or {}
 
     @classmethod
     def from_json(cls, json_object):
@@ -109,12 +180,40 @@ class Monster(Character):
         move_base_damage = json_object.get("move_base_damage", 0)
         move_adjusted_damage = json_object.get("move_adjusted_damage", 0)
         move_hits = json_object.get("move_hits", 0)
-        monster = cls(name, monster_id, max_hp, current_hp, block, intent, half_dead, is_gone, move_id, last_move_id, second_last_move_id, move_base_damage, move_adjusted_damage, move_hits)
-        monster.powers = [Power.from_json(json_power) for json_power in json_object["powers"]]
+        monster = cls(
+            name,
+            monster_id,
+            max_hp,
+            current_hp,
+            block,
+            intent,
+            half_dead,
+            is_gone,
+            move_id,
+            last_move_id,
+            second_last_move_id,
+            move_base_damage,
+            move_adjusted_damage,
+            move_hits,
+        )
+        monster.powers = [
+            Power.from_json(json_power) for json_power in json_object["powers"]
+        ]
         return monster
 
+    def add_debuff(self, debuff_name, amount):
+        if debuff_name in self.debuffs:
+            self.debuffs[debuff_name] += amount
+        else:
+            self.debuffs[debuff_name] = amount
+
     def __eq__(self, other):
-        if self.name == other.name and self.current_hp == other.current_hp and self.max_hp == other.max_hp and self.block == other.block:
+        if (
+            self.name == other.name
+            and self.current_hp == other.current_hp
+            and self.max_hp == other.max_hp
+            and self.block == other.block
+        ):
             if len(self.powers) == len(other.powers):
                 for i in range(len(self.powers)):
                     if self.powers[i] != other.powers[i]:
