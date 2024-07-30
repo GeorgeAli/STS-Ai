@@ -654,5 +654,109 @@ ironclad_cards = {
 }
 
 
+ironclad_archetypes = {
+    "strength": {
+        "key_cards": [
+            "Flex",
+            "Limit Break",
+            "Spot Weakness",
+            "Inflame",
+            "Demon Form",
+            "Heavy Blade",
+            "Whirlwind",
+            "Reaper",
+            "Shrug It Off",
+            "Berserk",
+        ],
+        "support_cards": [
+            "Pommel Strike",
+            "True Grit",
+            "Disarm",
+            "Uppercut",
+            "Thunderclap",
+            "Sword Boomerang",
+            "Armaments",
+            "Offering",
+        ],
+        "important_relics": [
+            "Shuriken",
+            "Vajra",
+            "Paper Frog",
+            "Red Skull",
+            "Champion Belt",
+        ],
+    },
+    "exhaust": {
+        "key_cards": [
+            "Feel No Pain",
+            "Dark Embrace",
+            "Evolve",
+            "Corruption",
+            "Second Wind",
+            "Fiend Fire",
+            "Burning Pact",
+        ],
+        "support_cards": [
+            "Shrug It Off",
+            "True Grit",
+            "Warcry",
+            "Power Through",
+            "Exhume",
+            "Battle Trance",
+            "Ghostly Armor",
+            "Entrench",
+        ],
+        "important_relics": [
+            "Charon's Ashes",
+            "Dead Branch",
+            "Mark of Pain",
+            "Runic Cube",
+        ],
+    }
+}
+
+
+ironclad_relic_values = {
+    "Bag of Marbles": 15,  # Good for aggressive starts and Strength builds
+    "Champion Belt": 15,  # Synergizes with Vulnerable
+    "Charon's Ashes": 20,  # Great for Exhaust builds
+    "Paper Frog": 25,  # Excellent with Vulnerable application
+    "Self-Forming Clay": 10,  # Decent defensive relic
+    "Stone Calendar": 10,  # Consistent AOE damage
+    "Calipers": 25,  # Fantastic for Block builds
+    "Incense Burner": 20,  # Provides a crucial turn of invincibility
+    "Magic Flower": 15,  # Boosts healing effects
+    "Nunchaku": 10,  # Provides extra energy, situationally useful
+    "Oddly Smooth Stone": 10,  # Extra Dexterity for defense
+    "Red Skull": 15,  # Good for low HP aggressive builds
+    "Shuriken": 25,  # Excellent for Strength builds
+    "Singing Bowl": 10,  # Flexibility in upgrading HP
+    "Strawberry": 10,  # Small HP boost
+    "Thread and Needle": 20,  # Consistent block each turn
+    "Toy Ornithopter": 15,  # Good for potion-heavy strategies
+    "Vajra": 25,  # Direct Strength boost
+    "Whetstone": 15,  # Immediate upgrade to attack cards
+    "Mark of Pain": 20,  # Extra energy with manageable downside
+    "Sozu": 20,  # Extra energy, but no more potions
+    "Ectoplasm": 10,  # Extra energy, but no more gold
+    "Runic Dome": 15,  # Extra energy, but can't see enemy intents
+    "Snecko Eye": 20,  # Randomizes card costs, potentially high value
+    "Fusion Hammer": 15,  # Extra energy, but can't upgrade cards
+    "Tiny House": 10,  # Small all-around boost
+    "Busted Crown": 10,  # Extra energy, but fewer card choices
+    "Velvet Choker": 10,  # Extra energy, but limits card plays
+    "Cursed Key": 15,  # Extra energy, but curses on chests
+    "Sacred Bark": 15,  # Doubles potion effects
+    "Runic Cube": 20,  # Synergizes with self-damage builds
+    "Astrolabe": 15,  # Transforms and upgrades cards
+    "Empty Cage": 10,  # Removes cards from deck
+    "Pandora's Box": 15,  # Transforms all strikes and defends
+    "Ring of the Serpent": 10,  # Draws extra card each turn
+    "Calling Bell": 15,  # Adds curses but gives rare relics
+    "Coffee Dripper": 10,  # Extra energy, but no rest
+    "Black Blood": 20,  # Heals after combat
+}
+
+
 def get_card_values(card_name):
     return ironclad_cards.get(card_name, {})

@@ -52,11 +52,8 @@
     <Compile Include="anytree\walker.py" />
     <Compile Include="anytree\__init__.py" />
     <Compile Include="card_dictionary.py" />
-    <Compile Include="colorless_card.py" />
-    <Compile Include="curse_card.py" />
     <Compile Include="help_function.py" />
     <Compile Include="ironclad_cards.py" />
-    <Compile Include="setup.py" />
     <Compile Include="spirecomm\ai\agent.py" />
     <Compile Include="spirecomm\ai\priorities.py" />
     <Compile Include="spirecomm\ai\__init__.py" />
@@ -73,7 +70,6 @@
     <Compile Include="spirecomm\spire\screen.py" />
     <Compile Include="spirecomm\spire\__init__.py" />
     <Compile Include="spirecomm\__init__.py" />
-    <Compile Include="status_card.py" />
     <Compile Include="STS_Ai.py" />
   </ItemGroup>
   <ItemGroup>
@@ -176,7 +172,6 @@
     <Content Include="spirecomm\__pycache__\__init__.cpython-310.pyc" />
     <Content Include="spirecomm\__pycache__\__init__.cpython-311.pyc" />
     <Content Include="temp\iron_clade_upgraded.txt" />
-    <Content Include="temp\Iron_clad_regular.txt" />
     <Content Include="temp\ReadMe.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

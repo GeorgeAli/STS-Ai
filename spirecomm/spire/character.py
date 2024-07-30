@@ -1,5 +1,4 @@
 from enum import Enum
-
 from spirecomm.spire.power import Power
 
 
@@ -70,28 +69,27 @@ class Player(Character):
 
     def __init__(self, max_hp, current_hp=None, block=0, energy=0):
         super().__init__(max_hp, current_hp, block)
+        self.energy = energy
         self.hand = []
         self.draw_pile = []
         self.discard_pile = []
         self.exhaust_pile = []
         self.powers = []
-        self.current_hp = 0
-        self.block = 0
-        self.energy = 0
         self.ethereal = []
+        self.orbs = []
 
     @classmethod
     def from_json(cls, json_object):
         player = cls(
-            json_object["max_hp"],
-            json_object["current_hp"],
-            json_object["block"],
-            json_object["energy"],
+            json_object.get("max_hp", 0),
+            json_object.get("current_hp", 0),
+            json_object.get("block", 0),
+            json_object.get("energy", 0),
         )
         player.powers = [
-            Power.from_json(json_power) for json_power in json_object["powers"]
+            Power.from_json(json_power) for json_power in json_object.get("powers", [])
         ]
-        player.orbs = [Orb.from_json(orb) for orb in json_object["orbs"]]
+        player.orbs = [Orb.from_json(orb) for orb in json_object.get("orbs", [])]
         return player
 
     def draw(self, number_of_cards):
@@ -115,12 +113,13 @@ class Player(Character):
 
     def add_buff(self, buff_name, amount):
         found_buff = next(
-            (buff for buff in self.powers if buff.name == buff_name), None
+            (buff for buff in self.powers if buff.power_name == buff_name), None
         )
         if found_buff:
             found_buff.amount += amount
         else:
-            self.powers.append(Buff(buff_name, amount))
+            new_buff = Power(power_id=buff_name, name=buff_name, amount=amount)
+            self.powers.append(new_buff)
 
 
 class Buff:
@@ -161,8 +160,8 @@ class Monster(Character):
         self.move_adjusted_damage = move_adjusted_damage
         self.move_hits = move_hits
         self.monster_index = 0
-        self.current_hp = current_hp  # Ensure current_hp is correctly initialized
         self.debuffs = debuffs or {}
+        self.powers = []
 
     @classmethod
     def from_json(cls, json_object):
@@ -180,6 +179,10 @@ class Monster(Character):
         move_base_damage = json_object.get("move_base_damage", 0)
         move_adjusted_damage = json_object.get("move_adjusted_damage", 0)
         move_hits = json_object.get("move_hits", 0)
+        debuffs = {
+            debuff["id"]: debuff["amount"] for debuff in json_object.get("debuffs", [])
+        }
+
         monster = cls(
             name,
             monster_id,
@@ -195,9 +198,10 @@ class Monster(Character):
             move_base_damage,
             move_adjusted_damage,
             move_hits,
+            debuffs,
         )
         monster.powers = [
-            Power.from_json(json_power) for json_power in json_object["powers"]
+            Power.from_json(json_power) for json_power in json_object.get("powers", [])
         ]
         return monster
 
@@ -206,6 +210,12 @@ class Monster(Character):
             self.debuffs[debuff_name] += amount
         else:
             self.debuffs[debuff_name] = amount
+
+    def has_debuff(self, debuff_name):
+        for debuff in self.debuffs:
+            if debuff.power_id == debuff_name:
+                return True
+        return False
 
     def __eq__(self, other):
         if (

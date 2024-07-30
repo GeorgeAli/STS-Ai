@@ -47,11 +47,11 @@ class Coordinator:
     """An object to coordinate communication with Slay the Spire"""
 
     def __init__(self):
-        file_path = 'output.txt'
+        file_path = "output.txt"
         self.input_queue = queue.Queue()
         self.output_queue = queue.Queue()
         self.input_thread = threading.Thread(
-            target=read_stdin, args=(self.input_queue,file_path)
+            target=read_stdin, args=(self.input_queue, file_path)
         )
         self.output_thread = threading.Thread(
             target=write_stdout, args=(self.output_queue,)
@@ -216,7 +216,7 @@ class Coordinator:
     :rtype: bool
     """
 
-    def play_one_game(self, player_class, ascension_level=0, seed=None):
+    def play_one_game(self, player_class, ascension_level=0, seed=12321321):
         self.clear_actions()
         while not self.game_is_ready:
             self.receive_game_state_update(block=True, perform_callbacks=False)
