@@ -21,39 +21,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="anytree\cachedsearch.py" />
-    <Compile Include="anytree\dotexport.py" />
-    <Compile Include="anytree\exporter\dictexporter.py" />
-    <Compile Include="anytree\exporter\dotexporter.py" />
-    <Compile Include="anytree\exporter\jsonexporter.py" />
-    <Compile Include="anytree\exporter\__init__.py" />
-    <Compile Include="anytree\importer\dictimporter.py" />
-    <Compile Include="anytree\importer\jsonimporter.py" />
-    <Compile Include="anytree\importer\__init__.py" />
-    <Compile Include="anytree\iterators\abstractiter.py" />
-    <Compile Include="anytree\iterators\levelordergroupiter.py" />
-    <Compile Include="anytree\iterators\levelorderiter.py" />
-    <Compile Include="anytree\iterators\postorderiter.py" />
-    <Compile Include="anytree\iterators\preorderiter.py" />
-    <Compile Include="anytree\iterators\zigzaggroupiter.py" />
-    <Compile Include="anytree\iterators\__init__.py" />
-    <Compile Include="anytree\node\anynode.py" />
-    <Compile Include="anytree\node\exceptions.py" />
-    <Compile Include="anytree\node\node.py" />
-    <Compile Include="anytree\node\nodemixin.py" />
-    <Compile Include="anytree\node\symlinknode.py" />
-    <Compile Include="anytree\node\symlinknodemixin.py" />
-    <Compile Include="anytree\node\util.py" />
-    <Compile Include="anytree\node\__init__.py" />
-    <Compile Include="anytree\render.py" />
-    <Compile Include="anytree\resolver.py" />
-    <Compile Include="anytree\search.py" />
-    <Compile Include="anytree\util\__init__.py" />
-    <Compile Include="anytree\walker.py" />
-    <Compile Include="anytree\__init__.py" />
     <Compile Include="card_dictionary.py" />
-    <Compile Include="help_function.py" />
-    <Compile Include="ironclad_cards.py" />
     <Compile Include="spirecomm\ai\agent.py" />
     <Compile Include="spirecomm\ai\priorities.py" />
     <Compile Include="spirecomm\ai\__init__.py" />
@@ -73,16 +41,6 @@
     <Compile Include="STS_Ai.py" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="anytree\" />
-    <Folder Include="anytree\exporter\" />
-    <Folder Include="anytree\importer\" />
-    <Folder Include="anytree\iterators\" />
-    <Folder Include="anytree\iterators\__pycache__\" />
-    <Folder Include="anytree\node\" />
-    <Folder Include="anytree\node\__pycache__\" />
-    <Folder Include="anytree\util\" />
-    <Folder Include="anytree\util\__pycache__\" />
-    <Folder Include="anytree\__pycache__\" />
     <Folder Include="spirecomm\" />
     <Folder Include="spirecomm\ai\" />
     <Folder Include="spirecomm\ai\__pycache__\" />
@@ -91,54 +49,8 @@
     <Folder Include="spirecomm\spire\" />
     <Folder Include="spirecomm\spire\__pycache__\" />
     <Folder Include="spirecomm\__pycache__\" />
-    <Folder Include="temp\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="anytree\iterators\__pycache__\abstractiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\abstractiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\levelordergroupiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\levelordergroupiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\levelorderiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\levelorderiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\postorderiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\postorderiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\preorderiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\preorderiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\zigzaggroupiter.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\zigzaggroupiter.cpython-311.pyc" />
-    <Content Include="anytree\iterators\__pycache__\__init__.cpython-310.pyc" />
-    <Content Include="anytree\iterators\__pycache__\__init__.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\anynode.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\anynode.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\exceptions.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\exceptions.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\node.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\node.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\nodemixin.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\nodemixin.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\symlinknode.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\symlinknode.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\symlinknodemixin.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\symlinknodemixin.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\util.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\util.cpython-311.pyc" />
-    <Content Include="anytree\node\__pycache__\__init__.cpython-310.pyc" />
-    <Content Include="anytree\node\__pycache__\__init__.cpython-311.pyc" />
-    <Content Include="anytree\util\__pycache__\__init__.cpython-310.pyc" />
-    <Content Include="anytree\util\__pycache__\__init__.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\cachedsearch.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\cachedsearch.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\render.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\render.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\resolver.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\resolver.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\search.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\search.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\walker.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\walker.cpython-311.pyc" />
-    <Content Include="anytree\__pycache__\__init__.cpython-310.pyc" />
-    <Content Include="anytree\__pycache__\__init__.cpython-311.pyc" />
-    <Content Include="spirecomm\ai\LICENSE" />
     <Content Include="spirecomm\ai\__pycache__\agent.cpython-310.pyc" />
     <Content Include="spirecomm\ai\__pycache__\agent.cpython-311.pyc" />
     <Content Include="spirecomm\ai\__pycache__\priorities.cpython-310.pyc" />
@@ -171,8 +83,6 @@
     <Content Include="spirecomm\spire\__pycache__\__init__.cpython-311.pyc" />
     <Content Include="spirecomm\__pycache__\__init__.cpython-310.pyc" />
     <Content Include="spirecomm\__pycache__\__init__.cpython-311.pyc" />
-    <Content Include="temp\iron_clade_upgraded.txt" />
-    <Content Include="temp\ReadMe.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

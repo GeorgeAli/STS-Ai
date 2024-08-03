@@ -216,7 +216,7 @@ class Coordinator:
     :rtype: bool
     """
 
-    def play_one_game(self, player_class, ascension_level=0, seed=12321321):
+    def play_one_game(self, player_class, ascension_level=0, seed=None):
         self.clear_actions()
         while not self.game_is_ready:
             self.receive_game_state_update(block=True, perform_callbacks=False)

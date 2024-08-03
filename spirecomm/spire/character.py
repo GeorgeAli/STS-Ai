@@ -210,6 +210,16 @@ class Monster(Character):
             self.debuffs[debuff_name] += amount
         else:
             self.debuffs[debuff_name] = amount
+            
+    def add_buff(self, buff_name, amount):
+        found_buff = next(
+            (buff for buff in self.powers if buff.power_name == buff_name), None
+        )
+        if found_buff:
+            found_buff.amount += amount
+        else:
+            new_buff = Power(power_id=buff_name, name=buff_name, amount=amount)
+            self.powers.append(new_buff)
 
     def has_debuff(self, debuff_name):
         for debuff in self.debuffs:
