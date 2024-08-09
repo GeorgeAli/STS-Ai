@@ -145,7 +145,6 @@ class Monster(Character):
         move_base_damage=0,
         move_adjusted_damage=0,
         move_hits=0,
-        debuffs=None,
     ):
         super().__init__(max_hp, current_hp, block)
         self.name = name
@@ -160,7 +159,6 @@ class Monster(Character):
         self.move_adjusted_damage = move_adjusted_damage
         self.move_hits = move_hits
         self.monster_index = 0
-        self.debuffs = debuffs or {}
         self.powers = []
 
     @classmethod
@@ -179,9 +177,6 @@ class Monster(Character):
         move_base_damage = json_object.get("move_base_damage", 0)
         move_adjusted_damage = json_object.get("move_adjusted_damage", 0)
         move_hits = json_object.get("move_hits", 0)
-        debuffs = {
-            debuff["id"]: debuff["amount"] for debuff in json_object.get("debuffs", [])
-        }
 
         monster = cls(
             name,
@@ -198,19 +193,12 @@ class Monster(Character):
             move_base_damage,
             move_adjusted_damage,
             move_hits,
-            debuffs,
         )
         monster.powers = [
             Power.from_json(json_power) for json_power in json_object.get("powers", [])
         ]
         return monster
 
-    def add_debuff(self, debuff_name, amount):
-        if debuff_name in self.debuffs:
-            self.debuffs[debuff_name] += amount
-        else:
-            self.debuffs[debuff_name] = amount
-            
     def add_buff(self, buff_name, amount):
         found_buff = next(
             (buff for buff in self.powers if buff.power_name == buff_name), None
@@ -221,10 +209,12 @@ class Monster(Character):
             new_buff = Power(power_id=buff_name, name=buff_name, amount=amount)
             self.powers.append(new_buff)
 
-    def has_debuff(self, debuff_name):
-        for debuff in self.debuffs:
-            if debuff.power_id == debuff_name:
+    def has_debuff(self, name):
+        for buff in self.powers:
+            if buff.power_name == name:
                 return True
+            break
+
         return False
 
     def __eq__(self, other):

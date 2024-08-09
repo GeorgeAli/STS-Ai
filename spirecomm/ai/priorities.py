@@ -142,7 +142,7 @@ class IroncladPriority(Priority):
         "Warcry": 0,
         "Intimidate": 1,
         "Second Wind": 1,
-        "Burning Pact": 1,
+        "Burning Pact":0,
         "Seeing Red": 0,
         "Iron Wave": 1,
         "Spot Weakness": 0,

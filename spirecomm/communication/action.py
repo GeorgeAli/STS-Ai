@@ -29,17 +29,6 @@ class Action:
         coordinator.send_message(self.command)
 
 
-class DoubleAction(Action):
-    def __init__(self):
-        if Action[1][0] == "No Monster Target":
-            PlayCardAction(Action[0])
-        elif Action[1][1] == "No Card Target":
-            PlayCardAction(Action[0], Action[1][0])
-        else:
-            PlayCardAction(Action[0], Action[1][0])
-            coordinator.add_action_to_queue(CardSelectAction(Action[1][1]))
-
-
 class PlayCardAction(Action):
     """An action to play a specified card from your hand"""
 

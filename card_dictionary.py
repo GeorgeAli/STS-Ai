@@ -238,7 +238,7 @@ ironclad_cards = {
         "type": "power",
         "damage": 0,
         "block": 0,
-        "gain_strength_on_hp_loss": 1,
+        "gain_strength_on_hp_loss_from_playing_cards": 1,
     },
     "Second Wind": {
         "type": "skill",
@@ -260,6 +260,7 @@ ironclad_cards = {
         "damage": 16,
         "block": 0,
         "exhaust_non_attack": True,
+        "block_per_exhaust": 0,
     },
     "Shockwave": {
         "type": "skill",
@@ -566,7 +567,7 @@ ironclad_cards = {
         "type": "power",
         "damage": 0,
         "block": 0,
-        "gain_strength_on_hp_loss": 2,
+        "gain_strength_on_hp_loss_from_playing_cards": 2,
     },
     "Second Wind+": {
         "type": "skill",
@@ -593,6 +594,7 @@ ironclad_cards = {
         "damage": 20,
         "block": 0,
         "exhaust_non_attack": True,
+        "block_per_exhaust": 0,
     },
     "Shockwave+": {
         "type": "skill",
@@ -655,24 +657,24 @@ ironclad_cards = {
 
 ironclad_archetypes = {
     "strength": {
-        "key_cards": [
-            "Flex",            
+        "key_cards": [                        
             "Inflame",
             "Demon Form",
         ],
         "support_cards": [
             "Limit Break",
+            "Feel No Pain",
             "Pommel Strike",
             "True Grit",
             "Disarm",
-            "Uppercut",            
-            "Sword Boomerang",
+            "Uppercut",                        
             "Armaments",
             "Offering",
             "Whirlwind",
+            "Sword Boomerang",
             "Shrug It Off",
-            "Feed",
-            "Feel No Pain"
+            "Feed",            
+            "Flex"
         ],
         "important_relics": [
             "Shuriken",
