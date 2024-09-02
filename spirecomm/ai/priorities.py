@@ -67,9 +67,11 @@ class Priority:
         dominant_archetype = max(archetype_scores, key=archetype_scores.get)
 
         # Calculate synergy score based on the dominant archetype
+        if card_name in ["Barricade", "Corruption", "Demon Form", "Fiend Fire", "Immolate", "Impervious","Juggernaut", "Offering", "Reaper"]:
+            synergy_score += 100  # Rare cards that are a must take
         if card_name in archetypes[dominant_archetype]["key_cards"]:
             synergy_score += 15  # High priority for key cards
-        elif card_name in archetypes[dominant_archetype]["support_cards"]:
+        if card_name in archetypes[dominant_archetype]["support_cards"]:
             synergy_score += 10  # Medium priority for support cards
 
         # Add some logic for overlapping cards that fit into multiple builds
@@ -90,18 +92,17 @@ class IroncladPriority(Priority):
         "Barricade": 1,
         "Demon Form": 1,
         "Feed": 1,
-        "Juggernaut": 0,
+        "Juggernaut": 1,
         "Offering": 2,
         "Immolate": 1,
-        "Bludgeon": 0,
+        "Bludgeon": 1,
         "Fiend Fire": 1,
         "Reaper": 1,
         "Impervious": 2,
         "Exhume": 1,
         "Whirlwind": 1,
         "Berserk": 1,
-        "Double Tap": 0,
-        "Bludgeon": 0,
+        "Double Tap": 0,        
         "Dark Embrace": 1,
         "Brutality": 0,
         "Feel No Pain": 2,
@@ -127,7 +128,7 @@ class IroncladPriority(Priority):
         "Thunderclap": 0,
         "Anger": 1,
         "Body Slam": 0,
-        "Headbutt": 1,
+        "Headbutt": 0,
         "Sword Boomerang": 1,
         "Rampage": 1,
         "Blood for Blood": 1,
@@ -140,7 +141,7 @@ class IroncladPriority(Priority):
         "Combust": 0,
         "Hemokinesis": 1,
         "Warcry": 0,
-        "Intimidate": 1,
+        "Intimidate": 0,
         "Second Wind": 1,
         "Burning Pact":0,
         "Seeing Red": 0,

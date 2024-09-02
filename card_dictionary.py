@@ -129,7 +129,7 @@ ironclad_cards = {
         "damage": 7,
         "block": 0,
         "exhaust_hand": True,
-        "multiple_hits": True,
+        "multiple_hits": 0,
     },
     "Fire Breathing": {
         "type": "power",
@@ -312,13 +312,6 @@ ironclad_cards = {
         "put_card_on_top_of_deck": True,
         "exhaust": True,
     },
-    "Whirlwind": {
-        "type": "attack",
-        "damage": 5,
-        "block": 0,
-        "aoe": True,
-        "variable_cost": True,
-    },
     # Upgraded cards
     "Strike+": {"type": "attack", "damage": 9, "block": 0},
     "Defend+": {"type": "skill", "damage": 0, "block": 8},
@@ -459,7 +452,7 @@ ironclad_cards = {
         "damage": 7,
         "block": 0,
         "exhaust_hand": True,
-        "multiple_hits": True,
+        "multiple_hits": 0,
     },
     "Fire Breathing+": {
         "type": "power",
@@ -624,11 +617,7 @@ ironclad_cards = {
         "aoe": True,
         "vulnerable_aoe": 2,
     },
-    "True Grit+": {
-        "type": "skill",
-        "damage": 0,
-        "block": 9
-    },
+    "True Grit+": {"type": "skill", "damage": 0, "block": 9},
     "Twin Strike+": {"type": "attack", "damage": 14, "block": 0, "hits": 2},
     "Uppercut+": {
         "type": "attack",
@@ -644,37 +633,23 @@ ironclad_cards = {
         "draw": 2,
         "put_card_on_top_of_deck": True,
         "exhaust": True,
-    },
-    "Whirlwind+": {
-        "type": "attack",
-        "damage": 8,
-        "block": 0,
-        "aoe": True,
-        "variable_cost": True,
-    },
+    }
 }
 
 
 ironclad_archetypes = {
     "strength": {
-        "key_cards": [                        
+        "key_cards": [
             "Inflame",
             "Demon Form",
+            "Limit Break",
+            "Offering",
         ],
         "support_cards": [
-            "Limit Break",
             "Feel No Pain",
-            "Pommel Strike",
-            "True Grit",
-            "Disarm",
-            "Uppercut",                        
-            "Armaments",
-            "Offering",
+            "Flex",
             "Whirlwind",
             "Sword Boomerang",
-            "Shrug It Off",
-            "Feed",            
-            "Flex"
         ],
         "important_relics": [
             "Shuriken",
@@ -690,41 +665,38 @@ ironclad_archetypes = {
             "Dark Embrace",
             "Corruption",
             "Second Wind",
-            "Fiend Fire",            
+            "Fiend Fire",
+            "Exhume",
         ],
         "support_cards": [
-            "Shrug It Off",
+            "Barricade",
+            "Juggernaut",
+            "Impervious",
             "True Grit",
-            "Power Through",
-            "Exhume",
-            "Burning Pact",
-            "Battle Trance",
-            "Feed"
         ],
         "important_relics": [
             "Charon's Ashes",
             "Dead Branch",
-            "Mark of Pain",
-            "Runic Cube",
         ],
-    },
+    }
 }
 
 
 ironclad_relic_values = {
-    "Chemical X": 25,  # Enhances cards with X cost
-    "Clockwork Souvenir": 25,  # Starts each combat with 1 Artifact
-    "Dolly's Mirror": 20,  # Duplicates a card in the deck    
-    "Hand Drill": 10,  # Makes enemies vulnerable when breaking their block
-    "Lee's Waffle": 30,  # Heals to full HP and increases max HP
-    "Medical Kit": 15,  # Allows playing Status cards
-    "Membership Card": 25,  # Reduces shop prices
-    "Orange Pellets": 20,  # Removes debuffs when playing power, attack, and skill
-    "Orrery": 5,  # Adds 5 cards to the deck    
-    "Sling of Courage": 15,  # Gives strength in Elite fights
-    "Strange Spoon": 10,  # Prevents cards from exhausting sometimes
-    "The Abacus": 10,  # Adds block when shuffling the draw pile
-    "Toolbox": 10,  # Adds a random colorless card to the hand at the start of combat
+    "Chemical X": 25,
+    "Cauldron": 5,
+    "Clockwork Souvenir": 25,
+    "Dolly's Mirror": 15,
+    "Hand Drill": 25,
+    "Lee's Waffle": 30,
+    "Medical Kit": 15,
+    "Membership Card": 25,
+    "Orange Pellets": 20,
+    "Orrery": 5,
+    "Sling of Courage": 15,
+    "Strange Spoon": 10,
+    "The Abacus": 20,
+    "Toolbox": 10,
 }
 
 

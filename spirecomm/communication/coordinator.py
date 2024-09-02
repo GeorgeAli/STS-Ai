@@ -3,7 +3,7 @@ import queue
 import threading
 import json
 import collections
-
+from time import sleep
 from spirecomm.spire.game import Game
 from spirecomm.spire.screen import ScreenType
 from spirecomm.communication.action import StartGameAction
@@ -179,6 +179,7 @@ class Coordinator:
                         communication_state.get("game_state"),
                         communication_state.get("available_commands"),
                     )
+            sleep(0.3)
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()
