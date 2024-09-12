@@ -45,6 +45,7 @@ class Game:
         self.card_in_play = None
         self.turn = 0
         self.cards_discarded_this_turn = 0
+        self.cards_drawn_this_turn = 0
 
         # Current Screen
         self.screen = None
