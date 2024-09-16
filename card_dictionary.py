@@ -38,8 +38,7 @@ ironclad_cards = {
         "type": "ATTACK",
         "damage": 5,
         "block": 0,
-        "aoe": True,
-        "variable_cost": True,
+        "whirlwind_handle": True,
     },
     "Battle Trance": {"type": "SKILL", "damage": 0, "block": 0, "draw": 3},
     "Berserk": {
@@ -353,7 +352,7 @@ ironclad_cards = {
         "damage": 8,
         "block": 0,
         "aoe": True,
-        "variable_cost": True,
+        "whirlwind_handle": True,
     },
     "Battle Trance+": {"type": "SKILL", "damage": 0, "block": 0, "draw": 4},
     "Berserk+": {
