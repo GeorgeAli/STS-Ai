@@ -312,8 +312,7 @@ class HandSelectScreen(Screen):
         return cls(cards, selected_cards, num_cards, can_pick_zero)
 
 
-class GameOverScreen(Screen):
-
+class GameOverScreen(Screen):  
     SCREEN_TYPE = ScreenType.GAME_OVER
 
     def __init__(self, score, victory):

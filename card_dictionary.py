@@ -280,7 +280,7 @@ ironclad_cards = {
         "type": "ATTACK",
         "damage": 3,
         "block": 0,
-        "random_targets": True,
+        "sword_boomerang_handle": True,
         "hits": 3,
     },
     "Thunderclap": {
@@ -607,7 +607,7 @@ ironclad_cards = {
         "type": "ATTACK",
         "damage": 3,
         "block": 0,
-        "random_targets": True,
+        "sword_boomerang_handle": True,
         "hits": 4,
     },
     "Thunderclap+": {

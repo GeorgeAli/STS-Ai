@@ -32,6 +32,7 @@ class Game:
         self.potions = []
         self.map = []
         self.played_cards = []
+        self.damage_dealt = 0
 
         # Combat state
         self.in_combat = False
