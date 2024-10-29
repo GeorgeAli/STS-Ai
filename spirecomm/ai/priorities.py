@@ -4,9 +4,9 @@ from card_dictionary import ironclad_archetypes
 class Priority:
     MAX_COPIES = {}
     BOSS_RELIC_PRIORITY_LIST = []
-    MAP_NODE_PRIORITIES_1 = {"R": 200, "E": 300, "$": 100, "?": 700, "M": 400, "T": 0}
-    MAP_NODE_PRIORITIES_2 = {"R": 300, "E": 100, "$": 500, "?": 700, "M": 700, "T": 0}
-    MAP_NODE_PRIORITIES_3 = {"R": 400, "E": 400, "$": 400, "?": 700, "M": 600, "T": 0}
+    MAP_NODE_PRIORITIES_1 = {"R": 300, "E": 500, "$": 100, "?": 200, "M": 700, "T": 0}
+    MAP_NODE_PRIORITIES_2 = {"R": 400, "E": 100, "$": 500, "?": 700, "M": 500, "T": 0}
+    MAP_NODE_PRIORITIES_3 = {"R": 400, "E": 500, "$": 400, "?": 700, "M": 600, "T": 0}
 
     def __init__(self):
         self.BOSS_RELIC_PRIORITIES = {
@@ -150,7 +150,7 @@ class IroncladPriority(Priority):
         "Havoc": 0,
         "Searing Blow": 0,
         "Heavy Blade": 0,
-        "Bloodletting": 1,
+        "Bloodletting": 0,
         "Flame Barrier": 1,
         "Dual Wield": 0,
         "Power Through": 1,

@@ -179,7 +179,7 @@ class Coordinator:
                         communication_state.get("game_state"),
                         communication_state.get("available_commands"),
                     )
-            sleep(0.2)
+            sleep(0.1)
             if perform_callbacks:
                 if self.last_error is not None:
                     self.action_queue.clear()

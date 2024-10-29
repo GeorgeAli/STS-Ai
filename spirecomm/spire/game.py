@@ -177,3 +177,20 @@ class Game:
             if potion.potion_id != "Potion Slot":
                 potions.append(potion)
         return potions
+
+    def get_static_potions(self):
+        potions = []
+        for potion in self.get_real_potions():
+            if potion.name in [
+                "Blood Potion",
+                "Fruit Juice",
+                "Ghost In A Jar",
+                "Fire Potion",
+                "Regen Potion",
+                "Explosive Potion",
+                "Essence of Steel",
+                "Dexterity Potion",
+                "Strength Potion"
+            ]:
+                potions.append(potion)
+        return potions

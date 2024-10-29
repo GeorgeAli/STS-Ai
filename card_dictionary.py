@@ -46,7 +46,7 @@ ironclad_cards = {
         "damage": 0,
         "block": 0,
         "gain_energy": 1,
-        "vulnerable": 1,
+        "self_vulnerable": 2,
     },
     "Blood for Blood": {
         "type": "ATTACK",
@@ -82,8 +82,7 @@ ironclad_cards = {
         "type": "POWER",
         "damage": 0,
         "block": 0,
-        "skills_cost_zero": True,
-        "exhaust_skills": True,
+        "skills_cost_zero": True
     },
     "Dark Embrace": {"type": "POWER", "damage": 0, "block": 0, "draw_on_exhaust": 1},
     "Disarm": {
@@ -138,7 +137,7 @@ ironclad_cards = {
     },
     "Flame Barrier": {"type": "SKILL", "damage": 0, "block": 12, "damage_on_attack": 4},
     "Ghostly Armor": {"type": "SKILL", "damage": 0, "block": 10, "ethereal": True},
-    "Havoc": {"type": "SKILL", "damage": 0, "block": 0, "play_top_discard": True},
+    "Havoc": {"type": "SKILL", "damage": 0, "block": 0, "play_top_card": True},
     "Headbutt": {
         "type": "ATTACK",
         "damage": 9,
@@ -360,7 +359,7 @@ ironclad_cards = {
         "damage": 0,
         "block": 0,
         "gain_energy": 1,
-        "vulnerable": 0,
+        "self_vulnerable": 1,
     },
     "Blood for Blood+": {
         "type": "ATTACK",
@@ -396,8 +395,7 @@ ironclad_cards = {
         "type": "POWER",
         "damage": 0,
         "block": 0,
-        "skills_cost_zero": True,
-        "exhaust_skills": True,
+        "skills_cost_zero": True
     },
     "Dark Embrace+": {"type": "POWER", "damage": 0, "block": 0, "draw_on_exhaust": 1},
     "Disarm+": {
@@ -467,7 +465,7 @@ ironclad_cards = {
         "damage_on_attack": 6,
     },
     "Ghostly Armor+": {"type": "SKILL", "damage": 0, "block": 13, "ethereal": True},
-    "Havoc+": {"type": "SKILL", "damage": 0, "block": 0, "play_top_discard": True},
+    "Havoc+": {"type": "SKILL", "damage": 0, "block": 0, "play_top_card": True},
     "Headbutt+": {
         "type": "ATTACK",
         "damage": 12,

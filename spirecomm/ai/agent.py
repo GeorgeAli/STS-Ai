@@ -2,7 +2,7 @@ from asyncio.windows_events import NULL
 import itertools
 import copy
 from card_dictionary import get_card_values, ironclad_archetypes, ironclad_relic_values
-from spirecomm.spire.card import Card
+from spirecomm.spire.card import Card, CardType
 from spirecomm.spire.game import Game
 from spirecomm.spire.character import PlayerClass
 from spirecomm.spire.screen import RestOption
@@ -71,20 +71,25 @@ class SimpleAgent:
 
     def get_next_action_in_game(self, game_state):
 
-        logging.info(f"Floor: {game_state.floor}")
         self.game = game_state
 
         if self.game.choice_available:
-            self.played_a_potion = False
             return self.handle_screen()
         if self.game.proceed_available:
-            self.played_a_potion = False
+            logging.info(f"Floor: {game_state.floor}")
             return ProceedAction()
         if self.game.play_available:
+            self.played_a_potion = False
+            potions_count = len(self.game.get_real_potions())
+
             for relic in self.game.relics:
                 if (
-                    relic.name == "White Beast Statue"
-                    and len(self.game.get_real_potions()) > 0
+                    (
+                        relic.name == "White Beast Statue"
+                        or (potions_count == 3 and relic.name != "Potion Belt")
+                        or potions_count == 5
+                    )
+                    and potions_count > 0
                     and self.played_a_potion == False
                 ):
                     potion_action = self.use_next_potion()
@@ -92,20 +97,30 @@ class SimpleAgent:
                         self.played_a_potion = True
                         return potion_action
 
-            if (self.game.room_type == "MonsterRoomBoss") and len(
-                self.game.get_real_potions()
-            ) > 0:
+            if self.game.room_type == "MonsterRoomBoss":
                 potion_action = self.use_next_potion()
                 if potion_action is not None:
                     return potion_action
 
-            ((card, target), best_game_state) = self.get_play_card_action()
+            ((card, target), best_game_state, best_eval) = self.get_play_card_action()
+
+            # We died, maybe try to play some potions
+            if best_eval == -1000000:
+                if potions_count > 0:
+                    potion_action = self.use_next_potion()
+                    if potion_action is not None:
+                        return potion_action
+            else:
+                if best_game_state is not None and best_game_state.player.energy == 0:
+                    potion_action = self.play_all_static_potions(best_game_state)
+                    if potion_action is not None:
+                        return potion_action
 
             if not card:
                 return EndTurnAction()
 
             # Log the action state
-            self.log_simulated_state(best_game_state, target)
+            # self.log_simulated_state(best_game_state, target)
 
             return PlayCardAction(card=card, target_monster=target)
         if self.game.end_available:
@@ -170,8 +185,16 @@ class SimpleAgent:
             None,
         )
 
+        torch_head_target = next(
+            (monster for monster in alive_monsters if monster.name == "Torch Head"),
+            None,
+        )
+
         if sentry_target or alive_monsters.count == 1:
             return alive_monsters[0]
+
+        if torch_head_target:
+            return alive_monsters[1]
 
         if wizard_target:
             return wizard_target
@@ -181,20 +204,7 @@ class SimpleAgent:
             monster for monster in alive_monsters if monster.move_adjusted_damage > 0
         ]
 
-        # From attacking monsters, filter out those that have high block, unless their attack is significantly high
-        effective_attackers = [
-            monster
-            for monster in attacking_monsters
-            if monster.block < 6
-            or monster.move_adjusted_damage > 20
-            and monster.current_hp < 13
-        ]
-
-        # If there are effective attackers, target the one with the lowest HP to maximize the chance of eliminating a threat
-        if effective_attackers:
-            return min(effective_attackers, key=lambda m: m.current_hp + m.block)
-
-        # If no effective attackers are found, default to attacking the monster with the lowest HP among those that are attacking
+        # Attack the monster with the lowest HP among those that are attacking
         if attacking_monsters:
             return min(attacking_monsters, key=lambda m: m.current_hp + m.block)
 
@@ -207,7 +217,15 @@ class SimpleAgent:
 
         def is_pure_block_card(card):
             card_values = get_card_values(card.name)
-            return card_values.get("block", 0) > 0 and card_values.get("damage", 0) == 0
+            if not ("block" in card_values and "damage" in card_values):
+                return False
+            return (
+                card_values["block"] > 0
+                and card.type.name == "SKILL"
+                and card.card_id
+                not in ["Armaments", "Shrug It Off", "Flame Barrier", "Sentinel"]
+                and card_values["damage"] == 0
+            )
 
         playable_cards = []
 
@@ -218,27 +236,26 @@ class SimpleAgent:
 
         # Prepare to adjust playable cards based on monster powers
         for monster in game_state.monsters:
-            for power in monster.powers:
-                if (
-                    monster.name == "Gremlin Nob"
-                    or monster.monster_id == "GremlinNob"
-                    or power.power_name == "Enrage"
-                ):
-                    playable_cards = [
-                        card for card in all_playable_cards if card.type != "SKILL"
-                    ]
-                    return playable_cards
+            if monster.monster_id == "GremlinNob":
+                playable_cards = [
+                    card for card in all_playable_cards if card.type.name != "SKILL"
+                ]
+                return playable_cards
 
-        if incoming_damage <= 2:
-            playable_cards = [
-                card for card in all_playable_cards if not is_pure_block_card(card)
-            ]
-        else:
-            playable_cards = all_playable_cards
+        playable_cards = all_playable_cards
+
+        for power in game_state.player.powers:
+            if power.power_id not in ["Bariccade"]:
+                if incoming_damage <= 0:
+                    playable_cards = [
+                        card
+                        for card in all_playable_cards
+                        if not is_pure_block_card(card)
+                    ]
 
         # Ensure priority cards are played first if available
         for card in playable_cards:
-            if card.card_id in ["Limit Break"]:
+            if card.card_id == "Limit Break":
                 current_strength = next(
                     (
                         buff.amount
@@ -248,6 +265,9 @@ class SimpleAgent:
                     0,
                 )
                 if current_strength <= 0:
+                    playable_cards.remove(card)
+            if card.card_id == "Exhume":
+                if len(game_state.exhaust_pile) <= 0:
                     playable_cards.remove(card)
 
         return playable_cards
@@ -271,6 +291,11 @@ class SimpleAgent:
                 is_first_card = True
 
                 for card in combo:
+                    for power in self.game.player.powers:
+                        if power.power_name == "Corruption":
+                            if card.type.name == "SKILL":
+                                card.exhausts = True
+                                card.cost = 0
                     if card.cost == -1:
                         card.cost = available_energy
                     total_cost += card.cost
@@ -306,7 +331,10 @@ class SimpleAgent:
                         combo[0],
                         first_card_target,
                     )
-                    best_game_state = simulated_state
+                    best_game_state = copy.deepcopy(self.game)
+                    best_game_state = self.simulate_card_play(
+                        best_game_state, card, first_card_target
+                    )
 
         return max_eval, best_action, best_game_state
 
@@ -314,33 +342,38 @@ class SimpleAgent:
         best_eval, best_action, best_game_state = self.expectimax()
 
         if best_action:
-            logging.info(f"Best Eval picked: {best_eval}")
-            logging.info(f"Best Action picked: {best_action}")
+            # logging.info(f"Best Eval picked: {best_eval}")
+            # logging.info(f"Best Action picked: {best_action}")
             return (
                 best_action,
                 best_game_state,
+                best_eval,
             )  # Return the best card action to perform
         else:
             return EndTurnAction()
 
     def simulate_card_play(self, simulated_state, card, target=None):
 
-        def apply_exhaust_effects(game_state):
+        def apply_exhaust_effects(game_state, card):
+            card_values = get_card_values(card.name)
             for power in game_state.player.powers:
                 if power.power_name == "Dark Embrace":
                     game_state.player.draw(power.amount)
                 if power.power_name == "Feel No Pain":
                     game_state.player.block += power.amount
+            if "gain_energy_on_exhaust" in card_values:
+                game_state.player.energy += card_values["gain_energy_on_exhaust"]
+            game_state.exhaust_pile.append(card)
 
-        def calculate_damage(card, game_state, target):
+        def deal_damage(card, game_state, target):
 
+            is_vulnerable = False
             card_values = get_card_values(card.name)
 
             if card_values.get("damage", 0) <= 0 or target is None:
                 return 0
 
             damage = card_values["damage"]
-            damage -= target.block
 
             current_strength = next(
                 (
@@ -351,16 +384,9 @@ class SimpleAgent:
                 0,
             )
 
-            is_weakened = any(
-                debuff.power_id == "Weakened" for debuff in game_state.player.powers
-            )
-
-            if damage <= 0:
-                return 0
-
             # Adjust damage based on strength and weakened status
             damage += current_strength
-            if is_weakened:
+            if target.has_debuff("Weakened") == True:
                 damage = int(damage * 0.75)  # Reduce damage by 25% if weakened
 
             if "strength_multiplier" in card_values:
@@ -369,15 +395,30 @@ class SimpleAgent:
             # Check if the enemy is vulnerable
             if target.has_debuff("Vulnerable") == True:
                 damage = int(damage * 1.5)  # Vulnerable increases damage by 50%
-                # Check for Paper Frog relic, which increases the vulnerability effect to 75%
-                for relic in game_state.relics:
-                    if relic.relic_id == "Paper Phrog":
-                        damage = int(damage * 1.75)
-                    if relic.relic_id == "Pen Nib" and relic.counter == 10:
-                        damage *= 2
-                    if relic.relic_id == "Akabeko" and game_state.turn == 0:
-                        damage += 8
+                is_vulnerable = True
 
+            # Check for Paper Frog relic, which increases the vulnerability effect to 75%
+            for relic in game_state.relics:
+                if relic.relic_id == "Paper Phrog" and is_vulnerable:
+                    damage = int(damage * 1.75)
+                if relic.relic_id == "Akabeko" and game_state.turn == 0:
+                    damage += 8
+                if relic.relic_id == "Pen Nib" and relic.counter == 10:
+                    damage *= 2
+
+            target.block -= damage
+
+            if target.block < 0:
+                damage = abs(target.block)
+                target.block = 0
+            else:
+                return 0
+
+            game_state.damage_dealt += damage
+            target.current_hp -= damage
+
+            if target.current_hp <= 0 and target.monster_id == "FungiBeast":
+                game_state.player.add_buff("Vulnerable", target.powers[0].amount)
             return damage
 
         def handle_enemy_powers(monster, card, damage, simulated_state):
@@ -386,62 +427,42 @@ class SimpleAgent:
 
             for power in monster.powers:
                 if power.power_id == "Curl Up" and damage > 0:
-                    block_from_curl_up = power.amount
-                    monster.block += block_from_curl_up
+                    monster.block += power.amount
                     monster.powers = [
                         p for p in monster.powers if p.power_id != "Curl Up"
                     ]
-                if power.power_id == "Anger" and card.type == "SKILL":
+                if power.power_id == "Anger" and card.type.name == "SKILL":
                     monster.add_buff("Strength", power.amount)
                 if power.power_id == "Angry" and damage > 0:
                     monster.add_buff("Strength", power.amount)
                 if power.power_id == "Artifact":
-                    debuffs = ["vulnerable", "weak", "lose_strength"]  # List of debuffs
+                    debuffs = ["Vulnerable", "Weakened"]  # List of debuffs
                     for debuff in debuffs:
-                        if debuff in card_effects:
-                            power.amount -= 1
-                            if power.amount <= 0:
-                                monster.powers = [
-                                    p
-                                    for p in monster.powers
-                                    if p.power_id != "Artifact"
-                                ]
-                            break  # Stop after one debuff attempt to apply
-                if power.power_id == "Thorns":
-                    if damage > 0:
-                        if simulated_state.player.block == 0:
-                            simulated_state.player.current_hp -= power.amount
-                        else:
-                            simulated_state.player.block -= power.amount
+                        if monster.has_debuff(debuff) and debuff in card_effects:
+                            if power.amount > 0:
+                                monster.remove_buff(debuff, card_effects[debuff])
+                if power.power_id == "Thorns" and damage > 0:
+                    if simulated_state.player.block <= 0:
+                        simulated_state.player.current_hp -= power.amount
+                    else:
+                        simulated_state.player.block -= power.amount
                 if power.power_id == "Malleable":
                     monster.block += power.amount
                     power.amount += (
                         1  # Malleable increases the amount of block each time
                     )
-                if power.power_id == "Buffer":
-                    if damage > 0:
-                        monster.powers = [
-                            p for p in monster.powers if p.power_id != "Buffer"
-                        ]
-                        monster.current_hp = max(
-                            monster.current_hp + damage, monster.max_hp
-                        )
-                if power.power_id == "Growth":
-                    monster.add_buff("Strength", power.amount)
-                    monster.add_buff("Dexterity", power.amount)
+                if power.power_id == "Buffer" and damage > 0:
+                    monster.powers = [
+                        p for p in monster.powers if p.power_id != "Buffer"
+                    ]
+                    damage = 0
                 if power.power_id == "Invincible":
                     if damage > monster.max_hp * 0.15:
                         damage = monster.max_hp * 0.15  # Cap damage to 15% of max HP
-                if power.power_id == "Metallicize":
-                    monster.block += power.amount  # Gains block at the end of each turn
-                if power.power_id == "Plated Armor":
-                    monster.block += power.amount  # Gains block at the end of each turn
                 if power.power_id == "Mode Shift":
-                    if power.amount <= 0:
-                        monster.move_adjusted_damage = 0
-                if power.power_id == "Plated Armor":
-                    monster.block += power.amount  # Adds block each turn
-                    if damage > 0:
+                    monster.current_hp = power.amount
+                if power.power_id == "Plated Armor" and damage > 0:
+                    if monster.block <= 0:
                         power.amount -= (
                             1  # Reduce Plated Armor by 1 for each unblocked attack
                         )
@@ -451,47 +472,20 @@ class SimpleAgent:
                                 for p in monster.powers
                                 if p.power_id != "Plated Armor"
                             ]
-                if power.power_id == "Regenerate":
-                    monster.current_hp = max(
-                        monster.current_hp + power.amount, monster.max_hp
-                    )  # Heals each turn
-                if power.power_id == "Ritual":
-                    monster.add_buff("Strength", power.amount)
                 if power.power_id == "Flight":
                     if power.amount <= 0:
                         monster.move_adjusted_damage = 0
-                        monster.current_hp = monster.current_hp
                     else:
-                        monster.current_hp = monster.current_hp * 2
-                if power.power_id == "Sharp Hide":
+                        damage /= 2
+                if power.power_id == "Sharp Hide" and damage > 0:
                     if simulated_state.player.block == 0:
                         simulated_state.player.current_hp -= power.amount
                     else:
                         simulated_state.player.block -= power.amount
+                if power.power_id == "Split":
+                    monster.current_hp = monster.current_hp - int(monster.max_hp / 2)
 
-            return monster, simulated_state
-
-        def handle_feed_card(simulated_state, card, target_monster, card_values):
-
-            if card.card_id != "Feed":
-                return simulated_state  # Only proceed if the card is 'Feed'
-
-            feed_heal = card_values["gain_max_hp_on_kill"]
-
-            damage = calculate_damage(card, simulated_state, target_monster)
-            target_monster.current_hp -= abs(damage)
-
-            # Check if Feed will kill the target
-            if target_monster.current_hp <= 0:
-                # Simulate the kill and the HP gain
-                simulated_state.player.max_hp += feed_heal
-                simulated_state.player.current_hp += feed_heal
-                self.feed_effect_used = True
-            else:
-                self.feed_effect_used = False
-            simulated_state.exhaust_pile.append(card)  # Feed is exhausted after use
-            apply_exhaust_effects(simulated_state)
-            return simulated_state
+            return monster, simulated_state, damage
 
         try:
             damage = 0
@@ -506,7 +500,6 @@ class SimpleAgent:
                         break
 
             if card in simulated_state.hand:
-
                 if card.cost > simulated_state.player.energy:
                     return simulated_state
                 simulated_state.hand.remove(card)
@@ -516,12 +509,6 @@ class SimpleAgent:
                 return simulated_state
 
             card_values = get_card_values(card.name)
-
-            # Special handling for the 'Feed' card
-            if card.card_id == "Feed":
-                return handle_feed_card(
-                    simulated_state, card, simulated_state_target, card_values
-                )
 
             # Calculate player's current dexterity
             current_dexterity = next(
@@ -537,60 +524,25 @@ class SimpleAgent:
                 debuff.power_id == "Frail" for debuff in simulated_state.player.powers
             )
 
-            if card_values.get("block", 0) > 0:
+            if "block" in card_values:
                 block = card_values["block"]
 
                 # Adjust block based on dexterity and frail status
-                if block == 0:
-                    simulated_state.player.block = 0
-                else:
+                if block != 0:
                     block += current_dexterity
                     if is_frail:
                         block = int(block * 0.75)  # Frail reduces block by 25%
                     simulated_state.player.block += block
 
-            for power in simulated_state.player.powers:
-                if power.power_name == "Brutality":
-                    simulated_state.current_hp -= 1
-                    simulated_state.player.draw(1)
-                if power.power_name == "Juggernaut" and block > 0:
-                    # This is wrong it needs to be random but we cant simulate the game's randomness
-                    for each_monster in simulated_state.monsters:
-                        each_monster.current_hp = (
-                            each_monster.current_hp + each_monster.block - power.amount
-                        )
-                        break
-                if power.power_name == "Corruption":
-                    if card.type == "SKILL":
-                        card.exhausts = True
-                        card.cost = 0
-                if power.power_name == "Evolve":
-                    for card in simulated_state.hand:
-                        if card.type == "STATUS":
-                            simulated_state.player.draw(power.amount)
-                if power.power_name == "Flame Barrier":
-                    for attacking_monsters in simulated_state.monsters:
-                        if attacking_monsters.move_adjusted_damage > 0:
-                            damage += power.amount
-                            attacking_monsters.block -= damage
-
-                            if attacking_monsters.block < 0:
-                                attacking_monsters.current_hp += (
-                                    attacking_monsters.block
-                                )
-                                attacking_monsters.block = 0
-                if power.power_name == "Rupture":
-                    for temp_power in simulated_state.player.powers:
-                        if temp_power.power_name == "Brutality":
-                            simulated_state.player.add_buff("Strength", power.amount)
-                    if "lose_hp" in card_values:
-                        simulated_state.player.add_buff("Strength", power.amount)
-
             # Other effects (vulnerable, weak, strength, etc.)
             if "vulnerable" in card_values and simulated_state_target is not None:
                 simulated_state_target.add_buff("Vulnerable", card_values["vulnerable"])
+            if "self_vulnerable" in card_values:
+                simulated_state.player.add_buff(
+                    "Vulnerable", card_values["self_vulnerable"]
+                )
             if "weak" in card_values and simulated_state_target is not None:
-                simulated_state_target.add_buff("Weak", card_values["weak"])
+                simulated_state_target.add_buff("Weakened", card_values["weak"])
             if "strength" in card_values:
                 simulated_state.player.add_buff("Strength", card_values["strength"])
             if "draw" in card_values:
@@ -602,33 +554,30 @@ class SimpleAgent:
                 simulated_state.player.gain_energy(card_values["gain_energy"])
             if "lose_hp" in card_values:
                 simulated_state.player.current_hp -= card_values["lose_hp"]
-            if "ethereal" in card_values:
-                simulated_state.player.ethereal.append(card)
             if "exhaust" in card_values:
-                simulated_state.exhaust_pile.append(card)
-                apply_exhaust_effects(simulated_state)
+                apply_exhaust_effects(simulated_state, card)
             if "aoe" in card_values:
                 for aoe_monster in simulated_state.monsters:
                     no_extra_damage = True
                     if aoe_monster.current_hp > 0 and not aoe_monster.is_gone:
-                        damage += calculate_damage(card, simulated_state, aoe_monster)
-                        aoe_monster.current_hp -= damage
+                        damage = deal_damage(card, simulated_state, aoe_monster)
+                        if "heal_on_damage" in card_values:
+                            simulated_state.player.current_hp = max(
+                                damage + simulated_state.player.current_hp,
+                                simulated_state.player.max_hp,
+                            )
             if "exhaust_non_attack" in card_values:
                 block = 0
-                for card in simulated_state.hand:
-                    if card.type != "ATTACK":
-                        simulated_state.hand.remove(card)
-                        simulated_state.exhaust_pile.append(card)
-                        block += card_values["block_per_exhaust"]
-                        if block > 0:
-                            block += current_dexterity
-                            if is_frail:
-                                block = int(block * 0.75)  # Frail reduces block by 25%
-                            simulated_state.player.block += block
-                        apply_exhaust_effects(simulated_state)
-            if "play_top_discard" in card_values:
-                if simulated_state.discard_pile:
-                    top_card = simulated_state.discard_pile.pop()
+                for each_card in simulated_state.hand:
+                    if each_card.type.name != "ATTACK" and each_card.uuid != card.uuid:
+                        block += card_values["block_per_exhaust"] + current_dexterity
+                        if is_frail:
+                            block = int(block * 0.75)  # Frail reduces block by 25%
+                        simulated_state.player.block += block
+                        apply_exhaust_effects(simulated_state, each_card)
+            if "play_top_card" in card_values:
+                if simulated_state.draw_pile:
+                    top_card = simulated_state.draw_pile.pop()
                     simulated_state = self.simulate_card_play(
                         simulated_state, top_card, simulated_state_target
                     )
@@ -643,31 +592,26 @@ class SimpleAgent:
                     "Rupture",
                     card_values["gain_strength_on_hp_loss_from_playing_cards"],
                 )
-            if "multiple_hits" in card_values:
-                hits = card_values["multiple_hits"]
-                for _ in range(hits):
-                    if simulated_state_target is not None:
-                        if (
-                            simulated_state_target.current_hp > 0
-                            and not simulated_state_target.is_gone
-                        ):
-                            no_extra_damage = True
-                            damage += calculate_damage(
-                                card, simulated_state, simulated_state_target
-                            )
-                            simulated_state_target.current_hp -= damage
             if "exhaust_hand" in card_values:
                 simulated_state.exhaust_pile.extend(simulated_state.hand)
                 if "multiple_hits" in card_values:
-                    card_values["multiple_hits"] = len(simulated_state.hand)
-                for card in simulated_state.hand:
-                    apply_exhaust_effects(simulated_state)
+                    card_values["multiple_hits"] = len(simulated_state.hand) - 1
+                for each_card in simulated_state.hand:
+                    if card.uuid != each_card.uuid:
+                        apply_exhaust_effects(simulated_state, each_card)
                 simulated_state.hand.clear()
-            if "heal_on_damage" in card_values:
-                simulated_state.player.current_hp = max(
-                    card_values["damage"] + simulated_state.player.current_hp,
-                    simulated_state.player.max_hp,
-                )
+            if "multiple_hits" in card_values and simulated_state_target is not None:
+                hits = card_values["multiple_hits"]
+                no_extra_damage = True
+                for _ in range(hits):
+                    if (
+                        simulated_state_target.current_hp > 0
+                        and not simulated_state_target.is_gone
+                    ):
+                        no_extra_damage = True
+                        damage = deal_damage(
+                            card, simulated_state, simulated_state_target
+                        )
             if "block_on_attack" in card_values:
                 block = card_values["block_on_attack"]
                 simulated_state.player.block += block
@@ -709,7 +653,7 @@ class SimpleAgent:
                 burn_card = Card(
                     card_id="Burn",
                     name="Burn",
-                    card_type="STATUS",
+                    card_type=CardType(4),
                     rarity="COMMON",
                     cost=-1,
                     is_playable=False,
@@ -719,7 +663,7 @@ class SimpleAgent:
                 wound_card = Card(
                     card_id="Wound",
                     name="Wound",
-                    card_type="STATUS",
+                    card_type=CardType(4),
                     rarity="COMMON",
                     cost=-2,
                     is_playable=False,
@@ -727,29 +671,73 @@ class SimpleAgent:
                 simulated_state.hand.append(wound_card)
                 simulated_state.hand.append(wound_card)
             if "sword_boomerang_handle" in card_values:
-                damage += (
-                    calculate_damage(card, simulated_state, simulated_state_target)
-                    * card_values["hits"]
-                )
+                for i in range(card_values["hits"]):
+                    damage = deal_damage(card, simulated_state, simulated_state_target)
                 no_extra_damage = True
             if "weak_aoe" in card_values:
                 for monster in simulated_state.monsters:
-                    monster.add_buff("Weak", card_values["weak_aoe"])
+                    monster.add_buff("Weakened", card_values["weak_aoe"])
             if "vulnerable_aoe" in card_values:
                 for monster in simulated_state.monsters:
                     monster.add_buff("Vulnerable", card_values["vulnerable_aoe"])
             if "whirlwind_handle" in card_values:
-                energy = simulated_state.player.energy
-                while energy > 0:
-                    energy -= 1
+                while simulated_state.player.energy > 0:
+                    simulated_state.player.energy -= 1
                     for aoe_monster in simulated_state.monsters:
                         if aoe_monster.current_hp > 0 and aoe_monster.is_gone == False:
-                            damage += calculate_damage(
-                                card, simulated_state, aoe_monster
-                            )
-                            aoe_monster.current_hp -= damage
-                simulated_state.player.energy = 0
+                            damage = deal_damage(card, simulated_state, aoe_monster)
                 no_extra_damage = True
+            if (
+                "gain_max_hp_on_kill" in card_values
+                and simulated_state_target is not None
+            ):
+                feed_heal = card_values["gain_max_hp_on_kill"]
+                no_extra_damage = True
+                damage = deal_damage(card, simulated_state, simulated_state_target)
+
+                # Check if Feed will kill the target
+                if simulated_state_target.current_hp <= 0:
+                    # Simulate the kill and the HP gain
+                    simulated_state.player.max_hp += feed_heal
+                    simulated_state.player.current_hp += feed_heal
+                    self.feed_effect_used = True
+                else:
+                    self.feed_effect_used = False
+
+            for power in simulated_state.player.powers:
+                if power.power_name == "Juggernaut" and block > 0:
+                    # This is wrong it needs to be random but we cant simulate the game's randomness
+                    for each_monster in simulated_state.monsters:
+                        each_monster.current_hp = (
+                            each_monster.current_hp + each_monster.block - power.amount
+                        )
+                        break
+                if power.power_name == "Evolve":
+                    for each_card in simulated_state.hand:
+                        if each_card.type.name == "STATUS":
+                            simulated_state.player.draw(power.amount)
+                if power.power_name == "Flame Barrier":
+                    for attacking_monsters in simulated_state.monsters:
+                        if attacking_monsters.move_adjusted_damage > 0:
+                            damage = power.amount
+                            simulated_state.damage_dealt += damage
+                            attacking_monsters.block -= damage
+
+                            if attacking_monsters.block < 0:
+                                attacking_monsters.block = 0
+                            else:
+                                attacking_monsters.current_hp -= damage
+                if power.power_name == "Rupture":
+                    for temp_power in simulated_state.player.powers:
+                        if temp_power.power_name == "Brutality":
+                            simulated_state.player.add_buff("Strength", power.amount)
+                    if "lose_hp" in card_values:
+                        simulated_state.player.add_buff("Strength", power.amount)
+
+            if simulated_state_target is not None:
+                simulated_state_target, simulated_state, damage = handle_enemy_powers(
+                    simulated_state_target, card, damage, simulated_state
+                )
 
             if (
                 no_extra_damage == False
@@ -758,15 +746,7 @@ class SimpleAgent:
                 and not simulated_state_target.is_gone
             ):
                 # Calc damage to deal to target
-                damage += calculate_damage(
-                    card, simulated_state, simulated_state_target
-                )
-                simulated_state_target.current_hp -= damage
-                simulated_state_target, simulated_state = handle_enemy_powers(
-                    simulated_state_target, card, damage, simulated_state
-                )
-
-            simulated_state.damage_dealt += damage
+                damage = deal_damage(card, simulated_state, simulated_state_target)
 
             simulated_state.player.energy -= max(0, card.cost)
 
@@ -779,7 +759,6 @@ class SimpleAgent:
 
         eval = 0
         all_monsters_dead = True
-        fighting_gremlin = False
 
         points = game_state.cards_drawn_this_turn * 20
         eval += points
@@ -815,80 +794,34 @@ class SimpleAgent:
 
         eval += strength * 600
         eval += dexterity * 200
-        eval -= vulnerable * 500
+        eval -= vulnerable * 1000
 
         for monster in game_state.monsters:
             if monster.current_hp <= 0 or monster.is_gone == True:
-                eval += 700  # Reward for killing an enemy
-                # logging.info(
-                #     f"Adding 700 points for defeating monster ({monster.name})"
-                # )
+                eval += 2000  # Reward for killing an enemy
             else:
-                if monster.name == "Gremlin Nob" or monster.monster_id == "GremlinNob":
-                    fighting_gremlin = True
+                # Monster buffs
+                for debuff in monster.powers:
+                    if debuff.power_id == "Vulnerable":
+                        eval += 700
+                    if debuff.power_id == "Weakened":
+                        eval += 700
+                    if debuff.power_id == "Strength":
+                        eval -= 500
 
-                # Monster Positive buffs
-                monster_strength = next(
-                    (
-                        buff.amount
-                        for buff in monster.powers
-                        if buff.power_id == "Strength"
-                    ),
-                    0,
-                )
-
-                # Monster Negative debuffs
-                monster_weakened = next(
-                    (
-                        debuff.amount
-                        for debuff in monster.powers
-                        if debuff.power_id == "Weakened"
-                    ),
-                    0,
-                )
-                monster_vulnerable = next(
-                    (
-                        debuff.amount
-                        for debuff in monster.powers
-                        if debuff.power_id == "Vulnerable"
-                    ),
-                    0,
-                )
-
-                points = monster_strength * 150
-                eval -= points
-                # logging.info(
-                #     f"Subtracting {points} points for monster's Strength ({monster_strength})"
-                # )
-
-                points = monster_weakened * 225
-                eval += points
-                # logging.info(
-                #     f"Adding {points} points for monster being Weakened ({monster_weakened})"
-                # )
-
-                points = monster_vulnerable * 450
-                eval += points
-                # logging.info(
-                #     f"Adding {points} points for monster being Vulnerable ({monster_vulnerable})"
-                # )
-
-                damage_dealt = game_state.damage_dealt * 4
-                eval += damage_dealt
-                # logging.info(f"Adding {damage_dealt} points for damage dealt")
-
+                eval += game_state.damage_dealt * 4
                 all_monsters_dead = False
 
         incoming_damage = self.get_incoming_damage(game_state)
 
         # Winning the fight
         if all_monsters_dead == True:
-            return float("inf")
+            eval += 30000
         else:
             game_state.player.current_hp -= max(0, incoming_damage)
 
             if game_state.player.current_hp <= 0:
-                return float("-inf")  # Strongly penalize if the player is dead
+                return -1000000  # Strongly penalize if the player is dead
 
             points = game_state.player.current_hp * 50
             eval += points
@@ -896,24 +829,20 @@ class SimpleAgent:
             #     f"Adding {points} points for player's current HP ({game_state.player.current_hp} HP)"
             # )
 
-        if incoming_damage > 2 and not fighting_gremlin:
+        if incoming_damage > 0:
             points = incoming_damage * 3
             eval -= points
             # logging.info(
             #     f"Subtracting {points} points for incoming damage ({incoming_damage} damage)"
             # )
-        elif incoming_damage < -10 and not fighting_gremlin:
-            points = (abs(incoming_damage) - 10) * 2
-            eval -= points
-            # logging.info(
-            #     f"Subtracting {points} points for overblocking ({incoming_damage})"
-            # )
 
         # Reward for exhausting Curses but penalize exhausting good cards
         for card in game_state.exhaust_pile:
-            if card.type in ["STATUS", "CURSE"]:
+            if card.type.name == "STATUS" or card.type.name == "CURSE":
                 eval += 10
             else:
+                if card.card_id not in ["Defend_R", "Attack_R"]:
+                    eval -= 100
                 if card.card_id == "Feed" and not self.feed_effect_used:
                     eval -= 6000
                 elif card.card_id == "Feed" and self.feed_effect_used:
@@ -923,7 +852,7 @@ class SimpleAgent:
         count_status_curse_cards = sum(
             1
             for card in game_state.hand + game_state.discard_pile + game_state.draw_pile
-            if card.type in ["STATUS", "CURSE"]
+            if card.type.name == "STATUS" or card.type.name == "CURSE"
         )
         eval -= 40 * count_status_curse_cards
 
@@ -936,18 +865,57 @@ class SimpleAgent:
                 "Feel No Pain",
                 "Barricade",
             ]:
-                eval += 500
-
-        for card in game_state.played_cards:
-            if fighting_gremlin and card.type == "SKILL":
-                eval -= 2000
+                eval += 4000
 
         # logging.info(f"total eval: {eval}, card: {card.name}")
         return eval
 
-    def use_next_potion(self):
-        for potion in self.game.get_real_potions():
+    def play_all_static_potions(self, gamestate):
+        for potion in gamestate.get_static_potions():
             if potion.can_use:
+                incoming_damage = self.get_incoming_damage(gamestate)
+
+                target = self.get_best_target(gamestate)
+
+                if potion.name in [
+                    "Blood Potion",
+                    "Regen Potion",
+                ] and gamestate.player.current_hp >= (
+                    gamestate.player.max_hp - (gamestate.player.max_hp * 20) / 100
+                ):
+                    continue
+
+                if (
+                    potion.name
+                    in ["Essence of Steel", "Dexterity Potion", "Strength Potion"]
+                    and gamestate.room_type != "MonsterRoomElite"
+                ):
+                    continue
+                if potion.name == "Ghost In A Jar":
+                    if incoming_damage < 20:
+                        continue
+                else:
+                    if incoming_damage >= 15:
+                        if potion.name == "Fire Potion" and target.current_hp > 20:
+                            continue
+                        if potion.name == "Explosive Potion" and target.current_hp > 10:
+                            continue
+                if potion.requires_target:
+                    return PotionAction(
+                        True,
+                        potion=potion,
+                        target_monster=target,
+                    )
+                else:
+                    return PotionAction(True, potion=potion)
+        return None
+
+    def use_next_potion(self):
+        all_potions = self.game.get_real_potions()
+        for potion in all_potions:
+            if potion.can_use:
+                if potion.name == "Entropic Brew" and len(all_potions) != 1:
+                    continue
                 if potion.requires_target:
                     return PotionAction(
                         True,
@@ -956,6 +924,8 @@ class SimpleAgent:
                     )
                 else:
                     return PotionAction(True, potion=potion)
+
+        return None
 
     def handle_screen(self):
 
@@ -1278,4 +1248,5 @@ class SimpleAgent:
         )
 
         # Final separator for clarity
+        logging.info("===================================================\n")
         logging.info("===================================================\n")
