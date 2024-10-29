@@ -9,6 +9,7 @@ from spirecomm.spire.screen import RestOption
 from spirecomm.communication.action import *
 from spirecomm.ai.priorities import IroncladPriority
 import logging
+import time
 
 
 logging.basicConfig(filename="best_simulated_states.log", level=logging.INFO)
@@ -75,10 +76,10 @@ class SimpleAgent:
 
         if self.game.choice_available:
             return self.handle_screen()
-        if self.game.proceed_available:
-            logging.info(f"Floor: {game_state.floor}")
+        if self.game.proceed_available:            
             return ProceedAction()
         if self.game.play_available:
+            logging.info(f"Floor: {game_state.floor}")
             self.played_a_potion = False
             potions_count = len(self.game.get_real_potions())
 
@@ -190,6 +191,11 @@ class SimpleAgent:
             None,
         )
 
+        donu_target = next(
+            (monster for monster in alive_monsters if monster.name == "Donu"),
+            None,
+        )
+
         if sentry_target or alive_monsters.count == 1:
             return alive_monsters[0]
 
@@ -198,6 +204,9 @@ class SimpleAgent:
 
         if wizard_target:
             return wizard_target
+
+        if donu_target:
+            return donu_target
 
         # Filter to find monsters that are actively attacking
         attacking_monsters = [
@@ -236,7 +245,7 @@ class SimpleAgent:
 
         # Prepare to adjust playable cards based on monster powers
         for monster in game_state.monsters:
-            if monster.monster_id == "GremlinNob":
+            if monster.monster_id == "GremlinNob" and game_state.player.current_hp + game_state.player.block - incoming_damage > 0:
                 playable_cards = [
                     card for card in all_playable_cards if card.type.name != "SKILL"
                 ]
@@ -245,7 +254,7 @@ class SimpleAgent:
         playable_cards = all_playable_cards
 
         for power in game_state.player.powers:
-            if power.power_id not in ["Bariccade"]:
+            if power.power_id not in ["Barricade"]:
                 if incoming_damage <= 0:
                     playable_cards = [
                         card
@@ -505,7 +514,6 @@ class SimpleAgent:
                 simulated_state.hand.remove(card)
                 simulated_state.played_cards.append(card)
             else:
-                logging.info(f"Card {card.card_id} not found in simulated hand.")
                 return simulated_state
 
             card_values = get_card_values(card.name)
@@ -575,6 +583,8 @@ class SimpleAgent:
                             block = int(block * 0.75)  # Frail reduces block by 25%
                         simulated_state.player.block += block
                         apply_exhaust_effects(simulated_state, each_card)
+            if "based_on_block" in card_values:
+                damage = simulated_state.player.block
             if "play_top_card" in card_values:
                 if simulated_state.draw_pile:
                     top_card = simulated_state.draw_pile.pop()
@@ -608,7 +618,6 @@ class SimpleAgent:
                         simulated_state_target.current_hp > 0
                         and not simulated_state_target.is_gone
                     ):
-                        no_extra_damage = True
                         damage = deal_damage(
                             card, simulated_state, simulated_state_target
                         )
@@ -759,6 +768,7 @@ class SimpleAgent:
 
         eval = 0
         all_monsters_dead = True
+        killed_special_monster = False
 
         points = game_state.cards_drawn_this_turn * 20
         eval += points
@@ -792,30 +802,32 @@ class SimpleAgent:
             0,
         )
 
-        eval += strength * 600
+        eval += strength * 700
         eval += dexterity * 200
         eval -= vulnerable * 1000
 
         for monster in game_state.monsters:
             if monster.current_hp <= 0 or monster.is_gone == True:
                 eval += 2000  # Reward for killing an enemy
+                if monster.name in ["Reptomancer", "The Collector"]:
+                    killed_special_monster = True
             else:
                 # Monster buffs
                 for debuff in monster.powers:
                     if debuff.power_id == "Vulnerable":
-                        eval += 700
+                        eval += 500
                     if debuff.power_id == "Weakened":
-                        eval += 700
+                        eval += 500
                     if debuff.power_id == "Strength":
-                        eval -= 500
+                        eval -= 300
 
-                eval += game_state.damage_dealt * 4
+                eval += game_state.damage_dealt * 10
                 all_monsters_dead = False
 
         incoming_damage = self.get_incoming_damage(game_state)
 
         # Winning the fight
-        if all_monsters_dead == True:
+        if all_monsters_dead == True or killed_special_monster:
             eval += 30000
         else:
             game_state.player.current_hp -= max(0, incoming_damage)
@@ -830,7 +842,7 @@ class SimpleAgent:
             # )
 
         if incoming_damage > 0:
-            points = incoming_damage * 3
+            points = incoming_damage * 9
             eval -= points
             # logging.info(
             #     f"Subtracting {points} points for incoming damage ({incoming_damage} damage)"
@@ -856,7 +868,7 @@ class SimpleAgent:
         )
         eval -= 40 * count_status_curse_cards
 
-        for power in self.game.player.powers:
+        for power in game_state.player.powers:
             if power.power_name in [
                 "Demon Form",
                 "Corruption",
@@ -865,7 +877,7 @@ class SimpleAgent:
                 "Feel No Pain",
                 "Barricade",
             ]:
-                eval += 4000
+                eval += 1000
 
         # logging.info(f"total eval: {eval}, card: {card.name}")
         return eval
@@ -913,6 +925,8 @@ class SimpleAgent:
     def use_next_potion(self):
         all_potions = self.game.get_real_potions()
         for potion in all_potions:
+            if potion.name == "Smoke Bomb":
+                time.sleep(5)
             if potion.can_use:
                 if potion.name == "Entropic Brew" and len(all_potions) != 1:
                     continue
