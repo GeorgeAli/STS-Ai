@@ -190,7 +190,8 @@ class Game:
                 "Explosive Potion",
                 "Essence of Steel",
                 "Dexterity Potion",
-                "Strength Potion"
+                "Strength Potion",
+                "Block Potion"
             ]:
                 potions.append(potion)
         return potions

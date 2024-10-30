@@ -4,30 +4,102 @@ from card_dictionary import ironclad_archetypes
 class Priority:
     MAX_COPIES = {}
     BOSS_RELIC_PRIORITY_LIST = []
-    MAP_NODE_PRIORITIES_1 = {"R": 300, "E": 500, "$": 100, "?": 200, "M": 700, "T": 0}
-    MAP_NODE_PRIORITIES_2 = {"R": 400, "E": 100, "$": 500, "?": 700, "M": 500, "T": 0}
-    MAP_NODE_PRIORITIES_3 = {"R": 400, "E": 500, "$": 400, "?": 700, "M": 600, "T": 0}
+    MAP_NODE_PRIORITIES_1_Balanced = {
+        "R": 300,
+        "E": 400,
+        "$": 50,
+        "?": 100,
+        "M": 600,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_1_Safe = {
+        "R": 700,
+        "E": 100,
+        "$": 200,
+        "?": 400,
+        "M": 200,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_1_Risky = {
+        "R": 50,
+        "E": 800,
+        "$": 20,
+        "?": 50,
+        "M": 500,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_2_Safe = {
+        "R": 700,
+        "E": 50,
+        "$": 500,
+        "?": 400,
+        "M": 200,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_2_Risky = {
+        "R": 100,
+        "E": 700,
+        "$": 500,
+        "?": 200,
+        "M": 500,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_2_Balanced = {
+        "R": 300,
+        "E": 100,
+        "$": 500,
+        "?": 500,
+        "M": 500,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_3_Safe = {
+        "R": 700,
+        "E": 100,
+        "$": 400,
+        "?": 500,
+        "M": 300,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_3_Risky = {
+        "R": 100,
+        "E": 500,
+        "$": 200,
+        "?": 200,
+        "M": 400,
+        "T": 0,
+    }
+    MAP_NODE_PRIORITIES_3_Balanced = {
+        "R": 300,
+        "E": 500,
+        "$": 400,
+        "?": 500,
+        "M": 600,
+        "T": 0,
+    }
 
     def __init__(self):
         self.BOSS_RELIC_PRIORITIES = {
             self.BOSS_RELIC_PRIORITY_LIST[i]: i
             for i in range(len(self.BOSS_RELIC_PRIORITY_LIST))
         }
-        self.MAP_NODE_PRIORITIES = {
-            1: self.MAP_NODE_PRIORITIES_1,
-            2: self.MAP_NODE_PRIORITIES_2,
-            3: self.MAP_NODE_PRIORITIES_3,
-            4: self.MAP_NODE_PRIORITIES_3,
+        self.MAP_NODE_PRIORITIES_Balanced = {
+            1: self.MAP_NODE_PRIORITIES_1_Balanced,
+            2: self.MAP_NODE_PRIORITIES_2_Balanced,
+            3: self.MAP_NODE_PRIORITIES_3_Balanced,
+            4: self.MAP_NODE_PRIORITIES_3_Balanced,
         }
-
-    def get_sorted_cards(self, card_list, game_state, reverse=False):
-        return sorted(
-            card_list,
-            key=lambda card: self.evaluate_card_synergy(
-                card, game_state.deck, ironclad_archetypes
-            ),
-            reverse=reverse,
-        )
+        self.MAP_NODE_PRIORITIES_Risky = {
+            1: self.MAP_NODE_PRIORITIES_1_Risky,
+            2: self.MAP_NODE_PRIORITIES_2_Risky,
+            3: self.MAP_NODE_PRIORITIES_3_Risky,
+            4: self.MAP_NODE_PRIORITIES_3_Risky,
+        }
+        self.MAP_NODE_PRIORITIES_Safe = {
+            1: self.MAP_NODE_PRIORITIES_1_Safe,
+            2: self.MAP_NODE_PRIORITIES_2_Safe,
+            3: self.MAP_NODE_PRIORITIES_3_Safe,
+            4: self.MAP_NODE_PRIORITIES_3_Safe,
+        }
 
     def should_skip(self, game, archetype, card):
         # Extract the key from the dictionary
@@ -46,9 +118,8 @@ class Priority:
         )
 
     def get_cards_for_action(self, cards, max_cards, gamestate):
-        sorted_cards = self.get_sorted_cards(cards, gamestate, reverse=False)
         num_cards = min(max_cards, len(cards))
-        return sorted_cards[:num_cards]
+        return cards[:num_cards]
 
     def evaluate_card_synergy(self, card, deck, archetypes):
         synergy_score = 0
@@ -67,7 +138,17 @@ class Priority:
         dominant_archetype = max(archetype_scores, key=archetype_scores.get)
 
         # Calculate synergy score based on the dominant archetype
-        if card_name in ["Barricade", "Corruption", "Demon Form", "Fiend Fire", "Immolate", "Impervious","Juggernaut", "Offering", "Reaper"]:
+        if card_name in [
+            "Barricade",
+            "Corruption",
+            "Demon Form",
+            "Fiend Fire",
+            "Immolate",
+            "Impervious",
+            "Juggernaut",
+            "Offering",
+            "Reaper",
+        ]:
             synergy_score += 100  # Rare cards that are a must take
         if card_name in archetypes[dominant_archetype]["key_cards"]:
             synergy_score += 15  # High priority for key cards
@@ -102,7 +183,7 @@ class IroncladPriority(Priority):
         "Exhume": 1,
         "Whirlwind": 1,
         "Berserk": 1,
-        "Double Tap": 0,        
+        "Double Tap": 0,
         "Dark Embrace": 1,
         "Brutality": 0,
         "Feel No Pain": 2,
@@ -143,7 +224,7 @@ class IroncladPriority(Priority):
         "Warcry": 0,
         "Intimidate": 0,
         "Second Wind": 1,
-        "Burning Pact":0,
+        "Burning Pact": 0,
         "Seeing Red": 0,
         "Iron Wave": 1,
         "Spot Weakness": 0,
@@ -164,18 +245,18 @@ class IroncladPriority(Priority):
         "Mark of Pain",
         "Calling Bell",
         "Cursed Key",
-        "Runic Pyramid",
+        "Sacred Bark",
         "Pandora's Box",
         "Busted Crown",
-        "Empty Cage",
         "Astrolabe",
         "Runic Cube",
         "Snecko Eye",
+        "Empty Cage",
+        "Runic Pyramid",
         "Slaver's Collar",
         "Ectoplasm",
         "Fusion Hammer",
         "Tiny House",
-        "Sacred Bark",
         "Coffee Dripper",
         "Black Blood",
         "Velvet Choker",

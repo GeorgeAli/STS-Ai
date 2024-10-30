@@ -120,6 +120,14 @@ class Player(Character):
         else:
             new_buff = Power(power_id=buff_name, name=buff_name, amount=amount)
             self.powers.append(new_buff)
+    
+    def has_debuff(self, name):
+        for buff in self.powers:
+            if buff.power_name == name:
+                return True
+            break
+
+        return False
 
 
 class Buff:

@@ -646,12 +646,14 @@ ironclad_archetypes = {
             "Demon Form",
             "Limit Break",
             "Offering",
+            "Reaper"
         ],
         "support_cards": [
             "Feel No Pain",
             "Flex",
             "Whirlwind",
             "Sword Boomerang",
+            "Immolate"
         ],
         "important_relics": [
             "Shuriken",
