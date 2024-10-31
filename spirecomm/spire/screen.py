@@ -208,7 +208,7 @@ class CombatRewardScreen(Screen):
                 )
             elif reward_type == RewardType.POTION:
                 potion = Potion.from_json(json_reward.get("potion"))
-                if potion.potion_id not in ["Exhaust Potion", "ElixirPotion"]:
+                if potion.potion_id != "Exhaust Potion" and potion.potion_id != "ElixirPotion":
                     rewards.append(CombatReward(reward_type, potion=potion))
             elif reward_type == RewardType.SAPPHIRE_KEY:
                 rewards.append(

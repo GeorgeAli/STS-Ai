@@ -660,7 +660,7 @@ ironclad_archetypes = {
             "Vajra",
             "Paper Frog",
             "Red Skull",
-            "Champion Belt",
+            "Champion Belt"
         ],
     },
     "exhaust": {
@@ -670,17 +670,17 @@ ironclad_archetypes = {
             "Corruption",
             "Second Wind",
             "Fiend Fire",
-            "Exhume",
+            "Exhume"
         ],
         "support_cards": [
             "Barricade",
             "Juggernaut",
             "Impervious",
-            "True Grit",
+            "True Grit"
         ],
         "important_relics": [
             "Charon's Ashes",
-            "Dead Branch",
+            "Dead Branch"
         ],
     },
 }

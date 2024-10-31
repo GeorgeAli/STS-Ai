@@ -101,9 +101,10 @@ class SimpleAgent:
             return self.handle_screen()
         if self.game.proceed_available:
             return ProceedAction()
-        if self.game.play_available:
-
+        if self.game.play_available:            
+            logging.basicConfig(filename="floors.log", level=logging.INFO)
             logging.info(f"Floor: {game_state.floor}")
+            logging.basicConfig(filename="best_simulated_states.log", level=logging.INFO)
             self.played_a_potion = False
             potions_count = len(self.game.get_real_potions())
 
@@ -157,6 +158,8 @@ class SimpleAgent:
         return StartGameAction(self.chosen_class)
 
     def get_incoming_damage(self, game_state):
+
+        has_intangible = False
         incoming_damage = 0
         incoming_damage -= game_state.player.block
 
@@ -172,6 +175,13 @@ class SimpleAgent:
         for power in game_state.player.powers:
             if power.power_id in ["Plated Armor", "Metallicize"]:
                 incoming_damage -= power.amount
+            if power.power_id == "Intangible":
+                has_intangible = True
+            if power.power_id == "Constricted":
+                if has_intangible:
+                    incoming_damage += 1
+                else:
+                    incoming_damage += power.amount
 
         for monster in game_state.monsters:
             if monster.current_hp > 0 and not monster.is_gone:
@@ -179,19 +189,39 @@ class SimpleAgent:
                     monster.move_adjusted_damage is not None
                     and monster.move_adjusted_damage > 0
                 ):
-                    incoming_damage += monster.move_adjusted_damage * monster.move_hits
+                    if has_intangible:
+                        incoming_damage += 1
+                    else:
+                        incoming_damage += (
+                            monster.move_adjusted_damage * monster.move_hits
+                        )
 
         for card in game_state.hand:
             if card.name == "Burn":
-                incoming_damage += 2
+                if has_intangible:
+                    incoming_damage += 1
+                else:
+                    incoming_damage += 2
             if card.name == "Burn+":
-                incoming_damage += 4
+                if has_intangible:
+                    incoming_damage += 1
+                else:
+                    incoming_damage += 4
             if card.name == "Decay":
-                incoming_damage += 2
+                if has_intangible:
+                    incoming_damage += 1
+                else:
+                    incoming_damage += 2
 
+        if game_state.instances_of_damage > 0:
+            if has_intangible:
+                incoming_damage += 1 * game_state.instances_of_damage
+            else:
+                incoming_damage += 3 * game_state.instances_of_damage
         return incoming_damage
 
     def get_best_target(self, game_state):
+        
         # Filter out all alive monsters
         alive_monsters = [
             monster
@@ -220,10 +250,17 @@ class SimpleAgent:
             None,
         )
 
-        if sentry_target or alive_monsters.count == 1:
+        centurion_target = next(
+            (monster for monster in alive_monsters if monster.name == "Centurion"),
+            None,
+        )
+
+        if sentry_target or alive_monsters.count == 1 or centurion_target:
             return alive_monsters[0]
 
         if torch_head_target:
+            if len(alive_monsters) == 1:
+                return alive_monsters[0]
             return alive_monsters[1]
 
         if wizard_target:
@@ -276,10 +313,17 @@ class SimpleAgent:
             None,
         )
 
-        if sentry_target or alive_monsters.count == 1:
+        centurion_target = next(
+            (monster for monster in alive_monsters if monster.name == "Centurion"),
+            None,
+        )
+
+        if sentry_target or alive_monsters.count == 1 or centurion_target:
             return [alive_monsters[0]]
 
         if torch_head_target:
+            if len(alive_monsters) == 1:
+                return alive_monsters[0]
             return [alive_monsters[1]]
 
         if wizard_target:
@@ -287,18 +331,6 @@ class SimpleAgent:
 
         if donu_target:
             return [donu_target]
-
-        # # Filter to find monsters that are actively attacking
-        # attacking_monsters = [
-        #     monster for monster in alive_monsters if monster.move_adjusted_damage > 0
-        # ]
-
-        # # Attack the monster with the lowest HP among those that are attacking
-        # if attacking_monsters:
-        #     return min(attacking_monsters, key=lambda m: m.current_hp + m.block)
-
-        # if alive_monsters:
-        #     return min(alive_monsters, key=lambda m: m.current_hp + m.block)
 
         return alive_monsters
 
@@ -321,6 +353,15 @@ class SimpleAgent:
                 ]
                 and card_values["damage"] == 0
             )
+
+        def use_bloodletting(playable_cards, energy):
+            for card in playable_cards:
+                card_values = get_card_values(card.name)
+                if "damage" in card_values:
+                    if card_values["damage"] > 0:
+                        if card.cost > energy:
+                            return True
+            return False
 
         playable_cards = []
 
@@ -370,108 +411,13 @@ class SimpleAgent:
             if card.card_id == "Exhume":
                 if len(game_state.exhaust_pile) <= 0:
                     playable_cards.remove(card)
-
+            if card.card_id == "Bloodletting" and not use_bloodletting(
+                playable_cards, game_state.player.energy
+            ):
+                playable_cards.remove(card)
+            if card.card_id == "Berserk" and incoming_damage >= 4:
+                playable_cards.remove(card)
         return playable_cards
-
-    # def expectimax(self):
-    #     max_eval = float("-inf")
-    #     best_action = (None, None)
-    #     best_game_state = None
-
-    #     # Get all playable cards
-    #     playable_cards = self.init_playable_cards(self.game)
-
-    #     # Get the player's available energy
-    #     available_energy = self.game.player.energy
-
-    #     # Generate all possible combinations of playable cards
-    #     for r in range(1, len(playable_cards) + 1):
-    #         for combo in itertools.permutations(playable_cards, r):
-    #             total_cost = 0
-    #             first_card_target = None
-    #             is_first_card = True
-
-    #             for card in combo:
-    #                 for power in self.game.player.powers:
-    #                     if power.power_name == "Corruption":
-    #                         if card.type.name == "SKILL":
-    #                             card.exhausts = True
-    #                             card.cost = 0
-    #                 if card.cost == -1:
-    #                     card.cost = available_energy
-    #                 total_cost += card.cost
-
-    #             # Skip the combination if it exceeds available energy
-    #             if total_cost > available_energy:
-    #                 continue
-
-    #             simulated_state = copy.deepcopy(self.game)
-
-    #             eval_for_cards_with_target = None
-
-    #             # Now simulate the rest of the combination on top of the simulated state
-    #             for card in combo:
-    #                 logging.info(f"Playing card {card} for combo {combo}")
-
-    #                 if card.has_target or card.card_id in ["Sword Boomerang"]:
-
-    #                     max_best_target_eval = float("-inf")
-    #                     best_target_game_state = None
-    #                     best_target = None
-
-    #                     for target in self.get_all_targets(simulated_state):
-
-    #                         best_target_simulated_state = copy.deepcopy(simulated_state)
-
-    #                         best_target_simulated_state = self.simulate_card_play(
-    #                             best_target_simulated_state, card, target
-    #                         )
-
-    #                         best_target_eval = self.evaluate_state(
-    #                             best_target_simulated_state
-    #                         )
-
-    #                         if best_target_eval >= max_best_target_eval:
-    #                             max_best_target_eval = best_target_eval
-    #                             best_target = target
-    #                             best_target_game_state = copy.deepcopy(
-    #                                 best_target_simulated_state
-    #                             )
-
-    #                     simulated_state = copy.deepcopy(best_target_game_state)
-    #                     eval_for_cards_with_target = max_best_target_eval
-    #                     if is_first_card:
-    #                         first_card_target = best_target
-    #                         is_first_card = False
-    #                 else:
-    #                     simulated_state = self.simulate_card_play(
-    #                         simulated_state, card, None
-    #                     )
-
-    #             logging.info(f"Evaluating state for combo {combo}")
-
-    #             # Evaluate the final game state
-    #             if eval_for_cards_with_target is None:
-    #                 eval = self.evaluate_state(simulated_state)
-    #             else:
-    #                 eval = eval_for_cards_with_target
-
-    #             logging.info(f"Evaluation resulted in {eval}")
-
-    #             # Update best action and state if a better evaluation is found
-    #             if eval >= max_eval:
-    #                 max_eval = eval
-    #                 best_action = (
-    #                     combo[0],
-    #                     first_card_target,
-    #                 )
-    #                 best_game_state = copy.deepcopy(self.game)
-    #                 best_game_state = self.simulate_card_play(
-    #                     best_game_state, combo[0], first_card_target
-    #                 )
-
-    #     logging.info(f"Best eval was {max_eval} and best action was {best_action}")
-    #     return max_eval, best_action, best_game_state
 
     def expectimax(self):
         def get_partial_combination_key(partial_combo):
@@ -667,6 +613,9 @@ class SimpleAgent:
                 damage = int(damage * 0.75)  # Reduce damage by 25% if weakened
 
             game_state.damage_dealt += damage
+            for power in target.powers:
+                if power.power_id in ["Sharp Hide", "Thorns"]:
+                    game_state.instances_of_damage += 1
 
             target.block -= damage
 
@@ -678,8 +627,9 @@ class SimpleAgent:
 
             target.current_hp -= damage
 
-            if target.current_hp <= 0 and target.monster_id == "FungiBeast":
-                game_state.player.add_buff("Vulnerable", target.powers[0].amount)
+            if target.current_hp <= 0:
+                if target.monster_id == "FungiBeast":
+                    game_state.player.add_buff("Vulnerable", target.powers[0].amount)
             return damage
 
         def handle_enemy_powers(monster, card, damage, simulated_state):
@@ -702,11 +652,6 @@ class SimpleAgent:
                         if monster.has_debuff(debuff) and debuff in card_effects:
                             if power.amount > 0:
                                 monster.remove_buff(debuff, card_effects[debuff])
-                if power.power_id == "Thorns" and damage > 0:
-                    if simulated_state.player.block <= 0:
-                        simulated_state.player.current_hp -= power.amount
-                    else:
-                        simulated_state.player.block -= power.amount
                 if power.power_id == "Malleable":
                     monster.block += power.amount
                     power.amount += (
@@ -738,11 +683,6 @@ class SimpleAgent:
                         monster.move_adjusted_damage = 0
                     else:
                         damage /= 2
-                if power.power_id == "Sharp Hide" and damage > 0:
-                    if simulated_state.player.block == 0:
-                        simulated_state.player.current_hp -= power.amount
-                    else:
-                        simulated_state.player.block -= power.amount
                 if power.power_id == "Split":
                     monster.current_hp = monster.current_hp - int(monster.max_hp / 2)
 
@@ -1177,14 +1117,16 @@ class SimpleAgent:
                     and incoming_damage <= 15
                 ):
                     continue
-                if (
-                    potion.name == "Explosive Potion"
-                    and incoming_damage <= 13
-                    and target.current_hp > 10
-                ):
-                    continue
 
-                if potion.requires_target:
+                if potion.requires_target and target is not None:
+
+                    if (
+                        potion.name == "Explosive Potion"
+                        and incoming_damage <= 13
+                        and target.current_hp > 10
+                    ):
+                        continue
+
                     return PotionAction(
                         True,
                         potion=potion,

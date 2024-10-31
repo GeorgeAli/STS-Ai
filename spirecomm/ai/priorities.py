@@ -5,10 +5,10 @@ class Priority:
     MAX_COPIES = {}
     BOSS_RELIC_PRIORITY_LIST = []
     MAP_NODE_PRIORITIES_1_Balanced = {
-        "R": 300,
-        "E": 400,
+        "R": 400,
+        "E": 300,
         "$": 50,
-        "?": 100,
+        "?": 400,
         "M": 600,
         "T": 0,
     }
@@ -24,7 +24,7 @@ class Priority:
         "R": 50,
         "E": 800,
         "$": 20,
-        "?": 50,
+        "?": 300,
         "M": 500,
         "T": 0,
     }
@@ -33,21 +33,21 @@ class Priority:
         "E": 50,
         "$": 500,
         "?": 400,
-        "M": 200,
+        "M": 50,
         "T": 0,
     }
     MAP_NODE_PRIORITIES_2_Risky = {
         "R": 100,
-        "E": 700,
-        "$": 500,
+        "E": 400,
+        "$": 400,
         "?": 200,
-        "M": 500,
+        "M": 400,
         "T": 0,
     }
     MAP_NODE_PRIORITIES_2_Balanced = {
         "R": 300,
         "E": 100,
-        "$": 500,
+        "$": 600,
         "?": 500,
         "M": 500,
         "T": 0,
@@ -106,7 +106,7 @@ class Priority:
         archetype_key = list(archetype.keys())[0]
         archetype_dict = {archetype_key: ironclad_archetypes[archetype_key]}
         card_synergy = self.evaluate_card_synergy(card, game.deck, archetype_dict)
-        return card_synergy < 10
+        return card_synergy <= 5
 
     def needs_more_copies(self, card, num_copies):
         return self.MAX_COPIES.get(card.card_id, 0) > num_copies
@@ -148,10 +148,11 @@ class Priority:
             "Juggernaut",
             "Offering",
             "Reaper",
+            "Berserk"
         ]:
             synergy_score += 100  # Rare cards that are a must take
         if card_name in archetypes[dominant_archetype]["key_cards"]:
-            synergy_score += 15  # High priority for key cards
+            synergy_score += 25  # High priority for key cards
         if card_name in archetypes[dominant_archetype]["support_cards"]:
             synergy_score += 10  # Medium priority for support cards
 
@@ -231,7 +232,7 @@ class IroncladPriority(Priority):
         "Havoc": 0,
         "Searing Blow": 0,
         "Heavy Blade": 0,
-        "Bloodletting": 0,
+        "Bloodletting": 1,
         "Flame Barrier": 1,
         "Dual Wield": 0,
         "Power Through": 1,
