@@ -101,10 +101,8 @@ class SimpleAgent:
             return self.handle_screen()
         if self.game.proceed_available:
             return ProceedAction()
-        if self.game.play_available:            
-            logging.basicConfig(filename="floors.log", level=logging.INFO)
-            logging.info(f"Floor: {game_state.floor}")
-            logging.basicConfig(filename="best_simulated_states.log", level=logging.INFO)
+        if self.game.play_available:
+            logging.info(f"Floor: {game_state.floor} ")
             self.played_a_potion = False
             potions_count = len(self.game.get_real_potions())
 
@@ -221,7 +219,7 @@ class SimpleAgent:
         return incoming_damage
 
     def get_best_target(self, game_state):
-        
+
         # Filter out all alive monsters
         alive_monsters = [
             monster
@@ -354,13 +352,16 @@ class SimpleAgent:
                 and card_values["damage"] == 0
             )
 
-        def use_bloodletting(playable_cards, energy):
+        def use_bloodletting(playable_cards, energy, incoming_damage, energy_given):
             for card in playable_cards:
                 card_values = get_card_values(card.name)
                 if "damage" in card_values:
                     if card_values["damage"] > 0:
-                        if card.cost > energy:
+                        if card.cost > energy and card.cost <= energy_given:
                             return True
+                if "block" in card_values and incoming_damage > 3:
+                    if card.cost > energy and card.cost <= energy_given:
+                        return True
             return False
 
         playable_cards = []
@@ -411,10 +412,15 @@ class SimpleAgent:
             if card.card_id == "Exhume":
                 if len(game_state.exhaust_pile) <= 0:
                     playable_cards.remove(card)
-            if card.card_id == "Bloodletting" and not use_bloodletting(
-                playable_cards, game_state.player.energy
-            ):
-                playable_cards.remove(card)
+            if card.card_id == "Bloodletting":
+                card_values = get_card_values(card.name)
+                if not use_bloodletting(
+                    playable_cards,
+                    game_state.player.energy,
+                    incoming_damage,
+                    card_values["gain_energy"]
+                ):
+                    playable_cards.remove(card)
             if card.card_id == "Berserk" and incoming_damage >= 4:
                 playable_cards.remove(card)
         return playable_cards
@@ -437,6 +443,7 @@ class SimpleAgent:
                 total_cost = 0
                 first_card_target = None
                 is_first_card = True
+                target = None
 
                 # Calculate the cost of the combo and skip if it exceeds energy
                 for card in combo:
@@ -478,41 +485,24 @@ class SimpleAgent:
                 # Start simulating from the first uncached position in the combo
                 for i in range(skip_to_position, len(combo)):
                     card = combo[i]
-                    best_target = None
-                    all_targets = self.get_all_targets(current_state)
-
-                    if len(all_targets) == 0:
-                        continue
 
                     # If card requires target, evaluate with all targets
                     if card.has_target or card.card_id in ["Sword Boomerang"]:
-                        max_best_target_eval = float("-inf")
 
-                        for target in all_targets:
-                            temp_state = copy.deepcopy(current_state)
-                            temp_state = self.simulate_card_play(
-                                temp_state, card, target
+                        target = self.get_best_target(current_state)
+
+                        current_state = self.simulate_card_play(
+                            current_state, card, target
+                        )
+
+                        if duplication_power:
+                            current_state = self.simulate_card_play(
+                                current_state, card, target
                             )
-
-                            if duplication_power:
-                                temp_state = self.simulate_card_play(
-                                    temp_state, card, target
-                                )
-
-                            target_eval = self.evaluate_state(temp_state)
-
-                            if target_eval >= max_best_target_eval:
-                                max_best_target_eval = target_eval
-                                best_target = target
-                                current_state = (
-                                    temp_state  # Update current_state to temp_state
-                                )
-
-                        duplication_power = False
-                        eval = max_best_target_eval
+                            duplication_power = False
 
                         if is_first_card:
-                            first_card_target = best_target
+                            first_card_target = target
                             is_first_card = False
                     else:
                         temp_state = copy.deepcopy(current_state)
@@ -521,14 +511,14 @@ class SimpleAgent:
                             temp_state = self.simulate_card_play(temp_state, card, None)
                             duplication_power = False
                         current_state = temp_state
-                        eval = self.evaluate_state(current_state)
 
+                    eval = self.evaluate_state(current_state)
                     # Store the new state and target in the cache
                     partial_combo_key = get_partial_combination_key(combo[: i + 1])
                     cache.store_state(
                         partial_combo_key,
                         current_state,
-                        best_target,
+                        target,
                         eval,
                     )
 
