@@ -89,7 +89,7 @@ class SimpleAgent:
         raise Exception(error_message)
 
     def get_next_action_in_game(self, game_state):
-
+        logging.info(f"FLOOR: {self.game.floor} ")
         self.game = game_state
 
         # HP values are set for the map generation
@@ -102,7 +102,6 @@ class SimpleAgent:
         if self.game.proceed_available:
             return ProceedAction()
         if self.game.play_available:
-            logging.info(f"Floor: {game_state.floor} ")
             self.played_a_potion = False
             potions_count = len(self.game.get_real_potions())
 
@@ -158,17 +157,18 @@ class SimpleAgent:
     def get_incoming_damage(self, game_state):
 
         has_intangible = False
+        has_torii = False
+        has_trod = False
         incoming_damage = 0
         incoming_damage -= game_state.player.block
 
-        incoming_damage -= next(
-            (
-                6
-                for relic in game_state.relics
-                if relic.name == "Orichalcum" and game_state.player.block == 0
-            ),
-            0,
-        )
+        for relic in game_state.relics:
+            if relic.name == "Orichalcum" and game_state.player.block == 0:
+                incoming_damage -= 6
+            if relic.name == "Torii":
+                has_torii = True
+            if relic.name == "Tungsten Rod":
+                has_trod = True
 
         for power in game_state.player.powers:
             if power.power_id in ["Plated Armor", "Metallicize"]:
@@ -177,7 +177,8 @@ class SimpleAgent:
                 has_intangible = True
             if power.power_id == "Constricted":
                 if has_intangible:
-                    incoming_damage += 1
+                    if not has_trod:
+                        incoming_damage += 1
                 else:
                     incoming_damage += power.amount
 
@@ -188,32 +189,45 @@ class SimpleAgent:
                     and monster.move_adjusted_damage > 0
                 ):
                     if has_intangible:
-                        incoming_damage += 1
+                        if not has_trod:
+                            incoming_damage += 1 * monster.move_hits
                     else:
+                        if monster.move_adjusted_damage <= 5 and has_torii:
+                            monster.move_adjusted_damage = 1
+                        if has_trod:
+                            monster.move_adjusted_damage -= 1
+
                         incoming_damage += (
                             monster.move_adjusted_damage * monster.move_hits
                         )
 
         for card in game_state.hand:
             if card.name == "Burn":
-                if has_intangible:
-                    incoming_damage += 1
-                else:
-                    incoming_damage += 2
+                burn_damage = 2
+                if has_intangible or has_torii:
+                    burn_damage = 1
+                if has_trod:
+                    burn_damage -= 1
+                incoming_damage += burn_damage
             if card.name == "Burn+":
-                if has_intangible:
-                    incoming_damage += 1
-                else:
-                    incoming_damage += 4
+                burn_damage = 4
+                if has_intangible or has_torii:
+                    burn_damage = 1
+                if has_trod:
+                    burn_damage -= 1
+                incoming_damage += burn_damage
             if card.name == "Decay":
-                if has_intangible:
-                    incoming_damage += 1
-                else:
-                    incoming_damage += 2
+                decay_damage = 2
+                if has_intangible or has_torii:
+                    decay_damage = 1
+                if has_trod:
+                    decay_damage -= 1
+                incoming_damage += decay_damage
 
         if game_state.instances_of_damage > 0:
             if has_intangible:
-                incoming_damage += 1 * game_state.instances_of_damage
+                if not has_trod:
+                    incoming_damage += 1 * game_state.instances_of_damage
             else:
                 incoming_damage += 3 * game_state.instances_of_damage
         return incoming_damage
@@ -257,7 +271,7 @@ class SimpleAgent:
             return alive_monsters[0]
 
         if torch_head_target:
-            if len(alive_monsters) == 1:
+            if len(alive_monsters) == 1 or len(alive_monsters) == 3:
                 return alive_monsters[0]
             return alive_monsters[1]
 
@@ -342,27 +356,10 @@ class SimpleAgent:
                 card_values["block"] > 0
                 and card.type.name == "SKILL"
                 and card.card_id
-                not in [
-                    "Armaments",
-                    "Shrug It Off",
-                    "Flame Barrier",
-                    "Sentinel",
-                    "True Grit",
-                ]
+                not in ["Armaments", "Flame Barrier", "Sentinel", "True Grit"]
+                and not "draw" in card_values
                 and card_values["damage"] == 0
             )
-
-        def use_bloodletting(playable_cards, energy, incoming_damage, energy_given):
-            for card in playable_cards:
-                card_values = get_card_values(card.name)
-                if "damage" in card_values:
-                    if card_values["damage"] > 0:
-                        if card.cost > energy and card.cost <= energy_given:
-                            return True
-                if "block" in card_values and incoming_damage > 3:
-                    if card.cost > energy and card.cost <= energy_given:
-                        return True
-            return False
 
         playable_cards = []
 
@@ -375,6 +372,7 @@ class SimpleAgent:
         for monster in game_state.monsters:
             if (
                 monster.monster_id == "GremlinNob"
+                and game_state.turn > 1
                 and game_state.player.current_hp
                 + game_state.player.block
                 - incoming_damage
@@ -388,7 +386,7 @@ class SimpleAgent:
         playable_cards = all_playable_cards
 
         for power in game_state.player.powers:
-            if power.power_id not in ["Barricade"]:
+            if power.power_id not in ["Barricade", "Juggernaut"]:
                 if incoming_damage <= 0:
                     playable_cards = [
                         card
@@ -413,28 +411,49 @@ class SimpleAgent:
                 if len(game_state.exhaust_pile) <= 0:
                     playable_cards.remove(card)
             if card.card_id == "Bloodletting":
+
                 card_values = get_card_values(card.name)
-                if not use_bloodletting(
-                    playable_cards,
-                    game_state.player.energy,
-                    incoming_damage,
-                    card_values["gain_energy"]
-                ):
+                energy_given = card_values["gain_energy"]
+
+                temp_game_state = copy.deepcopy(game_state)
+                temp_playable_cards = copy.deepcopy(playable_cards)
+
+                temp_playable_cards.remove(card)
+                temp_game_state.player.energy += energy_given
+
+                for temp_card in temp_playable_cards:
+                    for power in temp_game_state.player.powers:
+                        if (
+                            power.power_name == "Corruption"
+                            and temp_card.type.name == "SKILL"
+                        ):
+                            temp_card.exhausts = True
+                            temp_card.cost = 0
+                    if temp_card.cost == -1:
+                        temp_card.cost = temp_game_state.player.energy
+                    if temp_card.cost == -2:
+                        temp_card.cost = 0
+                    temp_game_state.player.energy -= temp_card.cost
+                    if temp_game_state.player.energy < 0:
+                        temp_game_state.player.energy += temp_card.cost
+                        continue
+                    temp_playable_cards.remove(temp_card)
+                if temp_game_state.player.energy > energy_given or len(temp_playable_cards) == 0:
                     playable_cards.remove(card)
-            if card.card_id == "Berserk" and incoming_damage >= 4:
-                playable_cards.remove(card)
         return playable_cards
 
     def expectimax(self):
         def get_partial_combination_key(partial_combo):
             return tuple((card.card_id, card.cost) for card in partial_combo)
 
-        max_eval = float("-inf")
         best_action = (None, None)
         best_game_state = None
         duplication_power = False
 
         cache = GameStateCache()
+        starting_state = copy.deepcopy(self.game)
+        starting_state.player.current_hp -= self.get_incoming_damage(starting_state)
+        max_eval = self.evaluate_state(starting_state)
         playable_cards = self.init_playable_cards(self.game)
         available_energy = self.game.player.energy
 
@@ -458,6 +477,8 @@ class SimpleAgent:
                             duplication_power = True
                     if card.cost == -1:
                         card.cost = available_energy
+                    if card.cost == -2:
+                        card.cost = 0
                     total_cost += card.cost
 
                 if total_cost > available_energy:
@@ -522,8 +543,6 @@ class SimpleAgent:
                         eval,
                     )
 
-                logging.info(f"Evaluation resulted in {eval} for combo {combo}")
-
                 # Update best action if this evaluation is higher
                 if eval >= max_eval:
                     max_eval = eval
@@ -533,15 +552,12 @@ class SimpleAgent:
                         best_game_state, combo[0], first_card_target
                     )
 
-        logging.info(f"Best eval was {max_eval} and best action was {best_action}")
         return max_eval, best_action, best_game_state
 
     def get_play_card_action(self):
         best_eval, best_action, best_game_state = self.expectimax()
 
         if best_action:
-            # logging.info(f"Best Eval picked: {best_eval}")
-            # logging.info(f"Best Action picked: {best_action}")
             return (
                 best_action,
                 best_game_state,
@@ -618,6 +634,7 @@ class SimpleAgent:
             target.current_hp -= damage
 
             if target.current_hp <= 0:
+                damage += target.current_hp
                 if target.monster_id == "FungiBeast":
                     game_state.player.add_buff("Vulnerable", target.powers[0].amount)
             return damage
@@ -681,8 +698,13 @@ class SimpleAgent:
         try:
             damage = 0
             block = 0
+            current_dexterity = 0
             no_extra_damage = False
             simulated_state_target = None
+            has_torii = False
+            has_trod = False
+            has_intagible = False
+            is_frail = False
 
             if target is not None:
                 for each_monster in simulated_state.monsters:
@@ -700,19 +722,20 @@ class SimpleAgent:
 
             card_values = get_card_values(card.name)
 
-            # Calculate player's current dexterity
-            current_dexterity = next(
-                (
-                    buff.amount
-                    for buff in simulated_state.player.powers
-                    if buff.power_id == "Dexterity"
-                ),
-                0,
-            )
+            # Find player's dexterity and Frail status
+            for buff in simulated_state.player.powers:
+                if buff.power_id == "Dexterity":
+                    current_dexterity = buff.amount
+                if buff.power_id == "Frail":
+                    is_frail = True
+                if buff.power_id == "Intangible":
+                    has_intagible = True
 
-            is_frail = any(
-                debuff.power_id == "Frail" for debuff in simulated_state.player.powers
-            )
+            for relic in simulated_state.relics:
+                if relic.name == "Torii":
+                    has_torii = True
+                if relic.name == "Tungsten Rod":
+                    has_trod = True
 
             if "block" in card_values:
                 block = card_values["block"]
@@ -729,6 +752,7 @@ class SimpleAgent:
                 simulated_state.player.add_buff(
                     "Vulnerable", card_values["self_vulnerable"]
                 )
+                simulated_state.player.add_buff("Berserk", card_values["gain_energy"])
             if "weak" in card_values and simulated_state_target is not None:
                 simulated_state_target.add_buff("Weakened", card_values["weak"])
             if "strength" in card_values:
@@ -741,7 +765,14 @@ class SimpleAgent:
             if "gain_energy" in card_values:
                 simulated_state.player.gain_energy(card_values["gain_energy"])
             if "lose_hp" in card_values:
-                simulated_state.player.current_hp -= card_values["lose_hp"]
+                lose_hp = card_values["lose_hp"]
+                if has_intagible:
+                    lose_hp = 1
+                if has_torii and lose_hp <= 5:
+                    lose_hp = 1
+                if has_trod:
+                    lose_hp -= 1
+                simulated_state.player.current_hp -= lose_hp
             if "exhaust" in card_values:
                 apply_exhaust_effects(simulated_state, card)
             if "aoe" in card_values:
@@ -929,6 +960,9 @@ class SimpleAgent:
                             simulated_state.player.add_buff("Strength", power.amount)
                     if "lose_hp" in card_values:
                         simulated_state.player.add_buff("Strength", power.amount)
+                if power.power_name == "Brutality":
+                    if not has_trod:
+                        simulated_state.player.current_hp -= 1
 
             if simulated_state_target is not None:
                 simulated_state_target, simulated_state, damage = handle_enemy_powers(
@@ -992,14 +1026,12 @@ class SimpleAgent:
 
         eval += strength * 700
         eval += dexterity * 200
-        eval -= vulnerable * 1000
-        logging.info(f"Vulnerable of player {vulnerable * 1000}")
+        eval -= vulnerable * 75
 
         for monster in game_state.monsters:
             if monster.current_hp <= 0 or monster.is_gone == True:
                 eval += 2500  # Reward for killing an enemy
-                logging.info(f"Nigga got killed {monster.name}")
-                if monster.name in ["Reptomancer", "The Collector"]:
+                if monster.name in ["Reptomancer", "The Collector", "Gremlin Leader"]:
                     killed_special_monster = True
             else:
 
@@ -1009,23 +1041,16 @@ class SimpleAgent:
                 for debuff in monster.powers:
                     if debuff.power_id == "Vulnerable":
                         eval += 100 * debuff.amount
-                        logging.info(f"Vulnerable of monster {100 * debuff.amount}")
                     if debuff.power_id == "Weakened":
                         eval += 100 * debuff.amount
-                        logging.info(f"Weakened of monster {100 * debuff.amount}")
                     if debuff.power_id == "Strength":
                         eval -= 100 * debuff.amount
-                        logging.info(f"Strength of monster {100 * debuff.amount}")
 
                 all_monsters_dead = False
 
-        eval += game_state.damage_dealt * 10
-        logging.info(
-            f"Dealt damage = {game_state.damage_dealt} with eval = {game_state.damage_dealt * 10}"
-        )
+        eval += game_state.damage_dealt * 9
 
         eval -= total_monster_hp
-        logging.info(f"Lost {total_monster_hp} eval because of remaining monster hp")
 
         incoming_damage = self.get_incoming_damage(game_state)
 
@@ -1042,12 +1067,8 @@ class SimpleAgent:
 
         if incoming_damage > 0:
             eval -= incoming_damage * 20
-            logging.info(f"Eval lost because of incoming damage {incoming_damage * 20}")
-        elif incoming_damage < -5:
-            eval -= (abs(incoming_damage) - 5) * 10
-            logging.info(
-                f"Eval lost for overblocking {(abs(incoming_damage) - 5) * 10}"
-            )
+        elif incoming_damage < -10:
+            eval -= (abs(incoming_damage) - 10) * 3
 
         # Reward for exhausting Curses but penalize exhausting good cards
         for card in game_state.exhaust_pile:
@@ -1077,9 +1098,16 @@ class SimpleAgent:
                 "Dark Embrace",
                 "Feel No Pain",
                 "Barricade",
+                "Berserk",
             ]:
-                eval += 200
-
+                if incoming_damage <= 5:
+                    eval += 200
+                else:
+                    eval += 100
+                if game_state.room_type == "MonsterRoomBoss":
+                    eval += 200
+                elif game_state.room_type == "MonsterRoomElite":
+                    eval += 100
         return eval
 
     def play_all_static_potions(self, gamestate):
@@ -1391,7 +1419,7 @@ class SimpleAgent:
                     return ChooseMapNodeAction(choice)
 
             return ChooseAction(0)
-
+                    
         if self.game.screen_type == ScreenType.EVENT:
             if self.game.screen.event_id in [
                 "Vampires",

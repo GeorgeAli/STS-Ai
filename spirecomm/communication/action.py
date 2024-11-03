@@ -344,7 +344,7 @@ class ChooseMapBossAction(ChooseAction):
 class StartGameAction(Action):
     """An action to start a new game, if not already in a game"""
 
-    def __init__(self, player_class, ascension_level=0, seed="giorgos"):
+    def __init__(self, player_class, ascension_level=0, seed=None):
         super().__init__("start")
         self.player_class = player_class
         self.ascension_level = ascension_level
