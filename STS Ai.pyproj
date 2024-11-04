@@ -52,6 +52,7 @@
     <Folder Include="spirecomm\__pycache__\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Readme.txt" />
     <Content Include="spirecomm\ai\__pycache__\agent.cpython-310.pyc" />
     <Content Include="spirecomm\ai\__pycache__\agent.cpython-311.pyc" />
     <Content Include="spirecomm\ai\__pycache__\priorities.cpython-310.pyc" />

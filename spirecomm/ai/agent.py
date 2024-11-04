@@ -15,6 +15,8 @@ logging.basicConfig(filename="best_simulated_states.log", level=logging.INFO)
 
 
 class GameStateCache:
+    """This is the cache that is used for the already explored combinations in the expectimax algorithm"""
+
     def __init__(self):
         self.cache = {}
 
@@ -68,10 +70,12 @@ class SimpleAgent:
         self.player_max_hp = 80
 
     def change_class(self, new_class):
+        """This can theoritically be used to cycle between classes, only ironclad works.."""
         self.chosen_class = PlayerClass.IRONCLAD
         self.priorities = IroncladPriority()
 
     def handle_error(self, error):
+        """A function that handles all errors that might appear"""
         error_message = f"An unexpected error occurred: {str(error)}"
         card_info = f"Card: {getattr(error, 'card', None)}"
         if isinstance(card_info, dict):
@@ -89,6 +93,8 @@ class SimpleAgent:
         raise Exception(error_message)
 
     def get_next_action_in_game(self, game_state):
+        """This gets called from the coordinator and is used for everything in the game"""
+
         logging.info(f"FLOOR: {self.game.floor} ")
         self.game = game_state
 
@@ -152,9 +158,11 @@ class SimpleAgent:
             return CancelAction()
 
     def get_next_action_out_of_game(self):
+        """Starts a new game"""
         return StartGameAction(self.chosen_class)
 
     def get_incoming_damage(self, game_state):
+        """Calculates the damage the agent is receiving this turn. Also accounts for every possible thing that might add or reduce damage"""
 
         has_intangible = False
         has_torii = False
@@ -233,7 +241,7 @@ class SimpleAgent:
         return incoming_damage
 
     def get_best_target(self, game_state):
-
+        """Finds the best target out of all the enemies in the field"""
         # Filter out all alive monsters
         alive_monsters = [
             monster
@@ -296,7 +304,7 @@ class SimpleAgent:
         return None
 
     def get_all_targets(self, game_state):
-
+        """Experimental method to return all targets in case i want to migrate to a solution where the agent simulates all states against all enemies (Very computationally expensive)"""
         # Filter out all alive monsters
         alive_monsters = [
             monster
@@ -347,6 +355,7 @@ class SimpleAgent:
         return alive_monsters
 
     def init_playable_cards(self, game_state):
+        """Narrows down the possible actions by removing cards from hand. The result from this is used to simulate all states"""
 
         def is_pure_block_card(card):
             card_values = get_card_values(card.name)
@@ -438,11 +447,20 @@ class SimpleAgent:
                         temp_game_state.player.energy += temp_card.cost
                         continue
                     temp_playable_cards.remove(temp_card)
-                if temp_game_state.player.energy > energy_given or len(temp_playable_cards) == 0:
+                if (
+                    temp_game_state.player.energy > energy_given
+                    or len(temp_playable_cards) == 0
+                ):
                     playable_cards.remove(card)
         return playable_cards
 
     def expectimax(self):
+        """This is where everything happens, the return of the algorithm is the action the agent is going to take.
+        There is a notable computational expense here. This function calculates the best possible combination of cards up to the available energy but only returns the first card.
+        This is done because the game is so unpredictable with card combinations, relics, draws, powers, enemy abilites, the randomness of the game that cant be replicated without cheating and so much more,
+        that the best action is to simulate the best combo, find it and return its first card. 9/10 the resulting 2-3 itterations will return the exact same combo but i found out that it is worth the effort.
+        """
+
         def get_partial_combination_key(partial_combo):
             return tuple((card.card_id, card.cost) for card in partial_combo)
 
@@ -450,19 +468,29 @@ class SimpleAgent:
         best_game_state = None
         duplication_power = False
 
+        # We init the cache
         cache = GameStateCache()
+
+        # Copying the gamestate is important because we are going to perform a lot of simulations that will alter the original gamestate if not copied
         starting_state = copy.deepcopy(self.game)
-        starting_state.player.current_hp -= self.get_incoming_damage(starting_state)
+
+        # This is a safety messure, all it does it check if the resulting eval is better than the eval we started with. If not do nothing
+        starting_state.player.current_hp -= max(
+            0, self.get_incoming_damage(starting_state)
+        )
         max_eval = self.evaluate_state(starting_state)
+
+        # These are all our cards
         playable_cards = self.init_playable_cards(self.game)
+
         available_energy = self.game.player.energy
 
+        # This run for ALL possible compinations
         for r in range(1, len(playable_cards) + 1):
             for combo in itertools.permutations(playable_cards, r):
                 total_cost = 0
                 first_card_target = None
                 is_first_card = True
-                target = None
 
                 # Calculate the cost of the combo and skip if it exceeds energy
                 for card in combo:
@@ -484,7 +512,16 @@ class SimpleAgent:
                 if total_cost > available_energy:
                     continue
 
+                # Again we copy the original game_state
                 current_state = copy.deepcopy(self.game)
+
+                # This is the position the loop is going to simulate if it finds a combo that is partially cached. For example:
+                # Lets assume we have this combo of 3 cards:
+                # [Strike, Strike, Defend]
+                # If we have alreay played and cached the combo [Strike, Strike], the cache is going to return its game_state, its eval and the target of the first card.
+                # Then we will simulate on top of that the play of Defend and return the eval.
+                # !!!NOTE!!!
+                # The combinations [Strike,Strike,Defend] and [Strike,Defend,Strike] are not and should not be treated as the same.
                 skip_to_position = 0
 
                 for i, card in enumerate(combo):
@@ -506,34 +543,32 @@ class SimpleAgent:
                 # Start simulating from the first uncached position in the combo
                 for i in range(skip_to_position, len(combo)):
                     card = combo[i]
+                    target = None
 
                     # If card requires target, evaluate with all targets
                     if card.has_target or card.card_id in ["Sword Boomerang"]:
 
+                        # Find the best target
                         target = self.get_best_target(current_state)
 
-                        current_state = self.simulate_card_play(
-                            current_state, card, target
-                        )
-
-                        if duplication_power:
-                            current_state = self.simulate_card_play(
-                                current_state, card, target
-                            )
-                            duplication_power = False
-
+                        # We have to store the first card's target here as well
                         if is_first_card:
                             first_card_target = target
                             is_first_card = False
-                    else:
-                        temp_state = copy.deepcopy(current_state)
-                        temp_state = self.simulate_card_play(temp_state, card, None)
-                        if duplication_power:
-                            temp_state = self.simulate_card_play(temp_state, card, None)
-                            duplication_power = False
-                        current_state = temp_state
 
+                    # Simulate the game_state
+                    current_state = self.simulate_card_play(current_state, card, target)
+
+                    # This is a power that lets us play the same card twice
+                    if duplication_power:
+                        current_state = self.simulate_card_play(
+                            current_state, card, target
+                        )
+                        duplication_power = False
+
+                    # Evaluate the simulated_state
                     eval = self.evaluate_state(current_state)
+
                     # Store the new state and target in the cache
                     partial_combo_key = get_partial_combination_key(combo[: i + 1])
                     cache.store_state(
@@ -555,6 +590,8 @@ class SimpleAgent:
         return max_eval, best_action, best_game_state
 
     def get_play_card_action(self):
+        """ Calls expectimax and returns EndTurn if no better action was found or if an error occured"""
+
         best_eval, best_action, best_game_state = self.expectimax()
 
         if best_action:
@@ -567,8 +604,14 @@ class SimpleAgent:
             return EndTurnAction()
 
     def simulate_card_play(self, simulated_state, card, target=None):
+        """Attempts a modest simulation of the game_state when playing a card. Optimizing the agent to make better decisions means making the simulation as accurate as possible.
+        This is so complicated that there are bound to be unfound bugs possibly bypassed because of the single card play 
+        """
 
         def apply_exhaust_effects(game_state, card):
+            """Applies effects of powers when exhausting a card
+            Relics are random and cant be possibly predicted without cheating and drawing from the draw pile is also random so keep that in mind
+            """
             card_values = get_card_values(card.name)
             for power in game_state.player.powers:
                 if power.power_name == "Dark Embrace":
@@ -580,7 +623,7 @@ class SimpleAgent:
             game_state.exhaust_pile.append(card)
 
         def deal_damage(card, game_state, target):
-
+            """Deals damage to a target, accounts for everything unless i have forgotten them or not seen them in my tests"""
             card_values = get_card_values(card.name)
 
             if card_values.get("damage", 0) <= 0 or target is None:
@@ -640,7 +683,9 @@ class SimpleAgent:
             return damage
 
         def handle_enemy_powers(monster, card, damage, simulated_state):
-
+            """How the each enemy will interact with the play of a card.
+            Most enemies have a unique effect and a way to beat them so we mustaaccount for that and base our strategies around it
+            """
             card_effects = get_card_values(card.name)
 
             for power in monster.powers:
@@ -990,6 +1035,7 @@ class SimpleAgent:
             raise
 
     def evaluate_state(self, game_state):
+        """Evaluation function of our agent, takes as input a gamestate and returns an integer that represents how good or bad the gamestate is"""
 
         eval = 0
         all_monsters_dead = True
@@ -1030,7 +1076,7 @@ class SimpleAgent:
 
         for monster in game_state.monsters:
             if monster.current_hp <= 0 or monster.is_gone == True:
-                eval += 2500  # Reward for killing an enemy
+                eval += 1000  # Reward for killing an enemy
                 if monster.name in ["Reptomancer", "The Collector", "Gremlin Leader"]:
                     killed_special_monster = True
             else:
@@ -1111,6 +1157,8 @@ class SimpleAgent:
         return eval
 
     def play_all_static_potions(self, gamestate):
+        """Static potions are all potions that have either a permanent effect or a semi-permanent one that lasts throught the battle. This handles when to play these potions"""
+
         for potion in gamestate.get_static_potions():
             if potion.can_use:
                 incoming_damage = self.get_incoming_damage(gamestate)
@@ -1155,6 +1203,8 @@ class SimpleAgent:
         return None
 
     def use_next_potion(self):
+        """Uses all the potions in order"""
+
         all_potions = self.game.get_real_potions()
         for potion in all_potions:
             if potion.can_use:
@@ -1174,7 +1224,11 @@ class SimpleAgent:
         return None
 
     def handle_screen(self):
+        """One of the bearbone function of the agent, this handles everything my might appear on the screnn, from clicking paths on the map to discarding cards to buying from shops"""
+
         def get_archetype(deck):
+            """Returns the dominant archetype of the current deck"""
+
             archetype_counts = {arch: 0 for arch in ironclad_archetypes.keys()}
             for card in deck:
                 for archetype, cards in ironclad_archetypes.items():
@@ -1184,6 +1238,8 @@ class SimpleAgent:
             return {dominant_archetype: ironclad_archetypes[dominant_archetype]}
 
         def best_option_from_action(option):
+            """Helper function to find the best option from the input or return the first available"""
+
             number_of_options = len(self.game.screen.options) - 1
             if option > number_of_options:
                 return ChooseAction(number_of_options)
@@ -1191,6 +1247,8 @@ class SimpleAgent:
                 return ChooseAction(option)
 
         def choose_rest_option(game_state):
+            """Handles the entire resting screen, from smithing to resting to lifting (relic exclusive) etc"""
+
             rest_options = game_state.screen.rest_options
             if len(rest_options) > 0 and not game_state.screen.has_rested:
                 if (
@@ -1225,6 +1283,8 @@ class SimpleAgent:
                 return ProceedAction()
 
         def handle_grid_select(game_state, priorities):
+            """Returns the best card to bbe picked from a grid of cards"""
+
             if not game_state.choice_available:
                 return ProceedAction()
             if game_state.screen.for_upgrade:
@@ -1245,6 +1305,7 @@ class SimpleAgent:
             return CardSelectAction(game_state.screen.cards[:num_cards])
 
         def choose_card_reward(game_state, priorities):
+            """Used for deck building, picks the best card to add to deck"""
 
             def count_copies_in_deck(card):
                 count = 0
@@ -1276,72 +1337,8 @@ class SimpleAgent:
             else:
                 return (True, CancelAction())
 
-        # def make_map_choice(game_state, priorities, map_route):
-
-        #     def generate_map_route(priorities, map_route, game_state):
-
-        #         map_route_strategy = priorities.MAP_NODE_PRIORITIES_Balanced
-        #         if game_state.player is not None:
-        #             if game_state.player.current_hp >= 0.65 * game_state.player.max_hp:
-        #                 map_route_strategy = priorities.MAP_NODE_PRIORITIES_Risky
-        #             elif game_state.player.current_hp <= 0.3 * game_state.player.max_hp:
-        #                 node_rewards = priorities.MAP_NODE_PRIORITIES_Safe
-
-        #         logging.info(map_route_strategy)
-        #         node_rewards = map_route_strategy.get(game_state.act)
-        #         best_rewards = {
-        #             0: {
-        #                 node.x: node_rewards[node.symbol]
-        #                 for node in game_state.map.nodes[0].values()
-        #             }
-        #         }
-        #         best_parents = {
-        #             0: {node.x: 0 for node in game_state.map.nodes[0].values()}
-        #         }
-        #         min_reward = min(node_rewards.values())
-        #         map_height = max(game_state.map.nodes.keys())
-        #         for y in range(0, map_height):
-        #             best_rewards[y + 1] = {
-        #                 node.x: min_reward * 20
-        #                 for node in game_state.map.nodes[y + 1].values()
-        #             }
-        #             best_parents[y + 1] = {
-        #                 node.x: -1 for node in game_state.map.nodes[y + 1].values()
-        #             }
-        #             for x in best_rewards[y]:
-        #                 node = game_state.map.get_node(x, y)
-        #                 best_node_reward = best_rewards[y][x]
-        #                 for child in node.children:
-        #                     test_child_reward = (
-        #                         best_node_reward + node_rewards[child.symbol]
-        #                     )
-        #                     if test_child_reward > best_rewards[y + 1][child.x]:
-        #                         best_rewards[y + 1][child.x] = test_child_reward
-        #                         best_parents[y + 1][child.x] = node.x
-        #         best_path = [0] * (map_height + 1)
-        #         best_path[map_height] = max(
-        #             best_rewards[map_height].keys(),
-        #             key=lambda x: best_rewards[map_height][x],
-        #         )
-        #         for y in range(map_height, 0, -1):
-        #             best_path[y - 1] = best_parents[y][best_path[y]]
-        #         map_route[:] = best_path
-
-        #     if (
-        #         len(game_state.screen.next_nodes) > 0
-        #         and game_state.screen.next_nodes[0].y == 0
-        #     ):
-        #         generate_map_route(priorities, map_route, game_state)
-        #         game_state.screen.current_node.y = -1
-        #     if game_state.screen.boss_available:
-        #         return ChooseMapBossAction()
-        #     chosen_x = map_route[game_state.screen.current_node.y + 1]
-        #     for choice in game_state.screen.next_nodes:
-        #         if choice.x == chosen_x:
-        #             return ChooseMapNodeAction(choice)
-        #     return ChooseAction(0)
-
         def make_map_choice(game_state, priorities, map_route):
+            """This is how the agent picks the next path on the map"""
 
             def generate_map_route(priorities, map_route, game_state):
                 # Select map strategy based on current HP at each node exploration
@@ -1419,7 +1416,7 @@ class SimpleAgent:
                     return ChooseMapNodeAction(choice)
 
             return ChooseAction(0)
-                    
+
         if self.game.screen_type == ScreenType.EVENT:
             if self.game.screen.event_id in [
                 "Vampires",
@@ -1523,6 +1520,7 @@ class SimpleAgent:
             return ProceedAction()
 
     def log_simulated_state(self, simulated_state, target=None):
+        """This is a helper function that simply logs the game_state object"""
 
         # Log general game state information
         logging.info(f"  Choice Available: {simulated_state.choice_available}")
